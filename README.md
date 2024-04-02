@@ -106,8 +106,7 @@ The LLM evaluates the vector DB search results for each of the three queries. Af
 (This **Thought-High-Level-Outline** part is also under consideration and design to explore more possibilities and exciting experiments.)  
 I think this is considered the most powerful part of this project.  
 It combines three different smaller components implemented as a LangGraph:
-  - 📗 **Think & Inner monologue**: The LLM "thinks" about why the user asked the question and what content the LLM itself would like to see included in the final document if it were the user.  
-    - You can check the details of the prompt in this [LangSmith]() page :)
+  - 📗 **Think & Inner monologue**: The LLM "thinks" about why the user asked the question and what content the LLM itself would like to see included in the final document if it were the user.
   - 📘 **Create a draft & outline**: Based on the thoughts from the previous step, a high-level draft of the document is generated. This step focuses on creating a high-level outline rather than a completed draft. (This is quite similar to the Plan stage in the Plan-and-Execute architecture.)
   - 📋 **Generate search queries and select/assign tools**: For performing actual "searches" based on the thoughts and sections generated in the previous steps.  
     These three steps are inspired by the STORM architecture in LangGraph.
