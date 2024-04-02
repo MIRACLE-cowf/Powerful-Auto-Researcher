@@ -6,7 +6,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable
 
-prompt = hub.pull("miracle/par_multi_query_prompt_private")
+prompt = hub.pull("miracle/par_multi_query_prompt_public")
 output_parser = LineListOutputParser()
 
 

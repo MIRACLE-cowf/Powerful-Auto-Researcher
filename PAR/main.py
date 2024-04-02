@@ -20,7 +20,7 @@ from THGGraph import THG_part
 embedding = get_openai_embedding_model(model_name="small")
 pinecone_index_name = "knowledge"
 vectorstore = PineconeVectorStore(index_name=pinecone_index_name, embedding=embedding)
-generate_prompt = hub.pull("miracle/par_generate_prompt")
+generate_prompt = hub.pull("miracle/par_generation_prompt")
 
 
 class RAG_State(TypedDict):

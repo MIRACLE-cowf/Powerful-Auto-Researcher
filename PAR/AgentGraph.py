@@ -23,8 +23,11 @@ class Tool(BaseModel):
         description="Tool input"
     )
 
-agent_prompt = hub.pull("miracle/par_agent_prompt")
+agent_prompt = hub.pull("miracle/par_agent_prompt_public")
+
+#For Agent, highly recommended "sonnet" or "opus" model. It can use "haiku" model, but don't guarantee good results.
 llm_with_tools = get_anthropic_model_tools_ver(model_name="sonnet")
+
 tavilytools = TavilySearchResults()
 wikipedia = Custom_WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 youtube_search_tool = Custom_YouTubeSearchTool()
@@ -39,6 +42,7 @@ chain = (
     | llm_with_tools.bind_tools(tools=tools).bind(stop=["</function_calls>", "</invoke>"])
     | AnthropicAgentOutputParser_v2()
 )
+
 
 class AgentState(TypedDict):
     input: str

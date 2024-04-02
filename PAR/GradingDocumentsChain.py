@@ -11,7 +11,7 @@ def grading_documents_chain(
     class grade(BaseModel):
         binary_score: str = Field(description="Relevance score 'yes' or 'no'")
 
-    grading_prompt = hub.pull("miracle/par_grading_documents_prompt")
+    grading_prompt = hub.pull("miracle/par_grading_documents_prompt_public")
     llm_with_tools = model.bind_tools(tools=[grade]).bind(stop=["</function_calls>"])
     grading_chain = grading_prompt | llm_with_tools | AnthropicOutputParser()
     return grading_chain
