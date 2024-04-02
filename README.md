@@ -90,7 +90,7 @@ To search the vector DB, the user's question is transformed into three different
 1. Regenerate a related search query focusing on the core aspects of the original question.
 2. Regenerate a query using semantically similar phrases to the original question.
 3. Regenerate a new query expanding on the potential intent behind the original question.
-   - These queries are generate through an LLM. You can check the details of the prompt in this [LangSmith]() page :)
+
 
 
 ### 🔍 **Vector DB Search**  
