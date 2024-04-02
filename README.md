@@ -16,6 +16,40 @@ While the project is still in its early experimental stages and there are many s
 #### **This project may use so many tokens, so be careful!**
 ### ❗WARNING❗
 
+## 🚀 HOW TO START 🚀
+The main third-pary libraries currently used in this project are:
+#### 1. [LangChain(Main Interface)](https://github.com/langchain-ai/langchain)
+#### 2. [LangGraph(Recursive structure and Clear flow)](https://github.com/langchain-ai/langgraph)
+#### 3. [LangSmith(Debugging)](https://docs.smith.langchain.com/)
+#### 4. [Anthropic(Language Model)](https://docs.anthropic.com/claude/docs/models-overview#claude-3-a-new-generation-of-ai)
+#### 5. [OpenAI(Embedding Model)](https://platform.openai.com/docs/models/embeddings)
+#### 6. [Tavily API(Main Search Engine)](https://docs.tavily.com/docs/tavily-api/introduction)
+#### 7. [PineCone(Vector Store)](https://www.pinecone.io/)
+* Vector store provided by LangChain, freely usable with any [vector store supported by LangChain](https://python.langchain.com/docs/integrations/vectorstores). For testing, please use an any Online Vector Store!
+#### 8. YouTube Search(Main Search Engine)
+#### 9. Wikipedia(Main Search Engine)
+#### 10. arXiv(Main Search Engine)
+
+
+The main libraries required for running the project can be found in the **requirements.txt** file.
+
+To clone the project, run the following command:
+```text
+git clone https://github.com/MIRACLE-cowf/Powerful-Auto-Researcher.git
+cd Powerful-Auto-Researcher
+```
+
+Next, install the required libraries:
+```python
+pip install -r requirements.txt
+```
+SET API Keys in .evn at PAR folder!
+
+To start the project, run:
+```Console
+py -m main
+```
+
 ## 🧐 What is RAG(Retrieval-Augmented Generation)?
 Retrieval-Augmented Generation(RAG) is a process that optimizes the output of large language models(LLMs) by enabling them to reference reliable knowledge bases outside of their training data sources before generating responses.  
 LLMs are trained on vast amounts of data and use billions of parameters to generate original results for tasks such as answering questions, translating languages, and completing sentences.  
@@ -102,39 +136,6 @@ Before generating the response, the user can decide whether to review and store 
 ![Powerful-Auto-Researcher](./source/PAR_flow_chart.png)
 
 
-## 🚀 HOW TO START 🚀
-The main third-pary libraries currently used in this project are:
-#### 1. [LangChain(Main Interface)](https://github.com/langchain-ai/langchain)
-#### 2. [LangGraph(Recursive structure and Clear flow)](https://github.com/langchain-ai/langgraph)
-#### 3. [LangSmith(Debugging)](https://docs.smith.langchain.com/)
-#### 4. [Anthropic(Language Model)](https://docs.anthropic.com/claude/docs/models-overview#claude-3-a-new-generation-of-ai)
-#### 5. [OpenAI(Embedding Model)](https://platform.openai.com/docs/models/embeddings)
-#### 6. [Tavily API(Main Search Engine)](https://docs.tavily.com/docs/tavily-api/introduction)
-#### 7. [PineCone(Vector Store)](https://www.pinecone.io/)
-* Vector store provided by LangChain, freely usable with any [vector store supported by LangChain](https://python.langchain.com/docs/integrations/vectorstores). For testing, please use an any Online Vector Store!
-#### 8. YouTube Search(Main Search Engine)
-#### 9. Wikipedia(Main Search Engine)
-#### 10. arXiv(Main Search Engine)
-
-
-The main libraries required for running the project can be found in the **requirements.txt** file.
-
-To clone the project, run the following command:
-```text
-git clone https://github.com/MIRACLE-cowf/Powerful-Auto-Researcher.git
-cd Powerful-Auto-Researcher
-```
-
-Next, install the required libraries:
-```python
-pip install -r requirements.txt
-```
-SET API Keys in .evn at PAR folder!
-
-To start the project, run:  
-```Console
-py -m main
-```
 
 ## 🔍 Question 🔎
 Why use Anthropic?
