@@ -1,16 +1,22 @@
 from typing import List
 
+from langchain_core.retrievers import BaseRetriever
 from langchain_core.vectorstores import VectorStore
+
+from MultiQueryChain import derived_queries
 
 
 def search_vector_store(
-        multi_query: List[str],
-        vectorStore: VectorStore,
+        multi_query: derived_queries,
+        retriever: BaseRetriever,
         k=3
 ):
     query_results = {}
-    for query in multi_query:
-        print("---RETRIEVING---")
-        docs = vectorStore.similarity_search(query, k=k)
-        query_results[query] = docs
+    print(f"---RETRIEVING QUERY: {multi_query.derived_query_1}---")
+    query_results[multi_query.derived_query_1] = retriever.get_relevant_documents(multi_query.derived_query_1)
+    print(f"---RETRIEVING QUERY: {multi_query.derived_query_2}---")
+    query_results[multi_query.derived_query_2] = retriever.get_relevant_documents(multi_query.derived_query_2)
+    print(f"---RETRIEVING QUERY: {multi_query.derived_query_3}---")
+    query_results[multi_query.derived_query_3] = retriever.get_relevant_documents(multi_query.derived_query_3)
+
     return query_results

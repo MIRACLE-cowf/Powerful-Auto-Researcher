@@ -8,39 +8,34 @@ from langchain_core.agents import AgentAction, AgentFinish
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolExecutor
 
-from CustomHelper.Anthropic_helper import convert_tools, convert_intermediate_steps
-from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_v2
-from CustomHelper.load_model import get_anthropic_model_tools_ver
+from CustomHelper.Anthropic_helper import convert_tools, convert_intermediate_steps, format_to_anthropic_tool_messages
+from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_beta
+from CustomHelper.Respond_Agent_Section_Tool import FinalResponseTool, FinalResponse_SectionAgent
+from CustomHelper.Retriever import mongodb_store, parent_retriever
+from CustomHelper.load_model import get_anthropic_model
 from CustomSearchFunc import web_search, wikipedia_search, youtube_search, arXiv_search
 from CustomSearchTool import Custom_WikipediaQueryRun, Custom_YouTubeSearchTool, Custom_arXivSearchTool
 
 
-class Tool(BaseModel):
-    tool_name: str = Field(
-        description="Tool name",
-    )
-    tool_input: str = Field(
-        description="Tool input"
-    )
-
 agent_prompt = hub.pull("miracle/par_agent_prompt_public")
 
 #For Agent, highly recommended "sonnet" or "opus" model. It can use "haiku" model, but don't guarantee good results.
-llm_with_tools = get_anthropic_model_tools_ver(model_name="sonnet")
+llm = get_anthropic_model(model_name="sonnet")
 
 tavilytools = TavilySearchResults()
 wikipedia = Custom_WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 youtube_search_tool = Custom_YouTubeSearchTool()
 arXiv_search_tool = Custom_arXivSearchTool()
-tools = [tavilytools, wikipedia, youtube_search_tool, arXiv_search_tool]
+response_tool = FinalResponseTool()
+tools = [tavilytools, wikipedia, youtube_search_tool, arXiv_search_tool, response_tool]
 chain = (
     {
         "input": lambda x: x['input'],
-        "agent_scratchpad": lambda x: convert_intermediate_steps(x['intermediate_steps']),
+        "agent_scratchpad": lambda x: format_to_anthropic_tool_messages(x['intermediate_steps']),
     }
-    | agent_prompt.partial(tools=convert_tools(tools))
-    | llm_with_tools.bind_tools(tools=tools).bind(stop=["</function_calls>", "</invoke>"])
-    | AnthropicAgentOutputParser_v2()
+    | agent_prompt.partial(add_more_restrictions="3. ALWAYS use 'Final-Respond' tool only when all the information about the section has been collected and you are ready to finally inform the user of all the information about the section. If you do not use this tool, you will not be able to forward the results to users, and so you will be penalized.")
+    | llm.bind_tools(tools=tools)
+    | AnthropicAgentOutputParser_beta()
 )
 
 
@@ -49,15 +44,20 @@ class AgentState(TypedDict):
     agent_outcome: Union[AgentAction, AgentFinish, None]
     intermediate_steps: Annotated[list[tuple[AgentAction, str]], operator.add]
     keys: Dict[str, any]
+    final_respond: FinalResponse_SectionAgent
 
 
 def run_agent(data):
     print('---RUN AGENT---')
-    if isinstance(data['agent_outcome'], AgentFinish):
-        if 'Try Again!' in data.get('agent_outcome').return_values['output']:
-            data['intermediate_steps'] = []
     agent_outcome = chain.invoke(data)
-    return { "agent_outcome": agent_outcome }
+    # print(f"agent outcome:{agent_outcome[0]}")
+
+    if isinstance(agent_outcome, list) and len(agent_outcome) > 0:
+        return { "agent_outcome": agent_outcome[0] }
+    elif isinstance(agent_outcome, AgentFinish):
+        return { "agent_outcome": agent_outcome }
+    else:
+        raise ValueError(f"Unexpected agent_outcome: {agent_outcome}")
 
 
 def router(data):
@@ -81,6 +81,7 @@ tool_executor = ToolExecutor(tools)
 
 
 def execute_tools(data):
+    print('---EXECUTE TOOLS---')
     agent_action = data['agent_outcome']
     tool_name = agent_action.tool
     if tool_name == 'tavily_search_results_json':
@@ -89,8 +90,10 @@ def execute_tools(data):
         return { 'keys': { 'tool': 'wikipedia', 'tool_input': agent_action.tool_input}}
     elif tool_name == 'youtube_search':
         return { 'keys': { 'tool': 'youtube', 'tool_input': agent_action.tool_input}}
-    else:
+    elif tool_name == 'arXiv_search':
         return { 'keys': { 'tool': 'arXiv', 'tool_input': agent_action.tool_input}}
+    else:
+        return { 'keys': { 'tool': "respond", 'tool_input': agent_action.tool_input }}
     # output = tool_executor.invoke(agent_action)
     # return { 'intermediate_steps': [(agent_action, str(output))]}
 
@@ -102,15 +105,22 @@ def router_tool(data):
         return 'wikipedia'
     elif data['keys']['tool'] == 'youtube':
         return 'youtube'
-    else:
+    elif data['keys']['tool'] == 'arXiv':
         return 'arXiv'
+    else:
+        return 'respond'
 
 
 def tavily_search_node(data):
     print('---TAVILY SEARCH NODE---')
     agent_action = data['agent_outcome']
+    result = web_search(
+        query=data['keys']['tool_input']['query'],
+        datastore=mongodb_store,
+        retriever=parent_retriever
+    )
     return {
-        'intermediate_steps': [(agent_action, web_search(data['keys']['tool_input']['query']))]
+        'intermediate_steps': [(agent_action, result)]
     }
 
 
@@ -138,6 +148,13 @@ def arXiv_search_node(data):
     }
 
 
+def respond_node(data):
+    print('---RESPOND NODE---')
+    return {
+        "final_respond": FinalResponse_SectionAgent(section_title=data['keys']['tool_input']['section_title'], section_content=data['keys']['tool_input']['section_content'], section_thought=data['keys']['tool_input']['section_thought'])
+    }
+
+
 workflow = StateGraph(AgentState)
 workflow.add_node('agent', run_agent)
 workflow.add_node('retry', retry_node)
@@ -146,6 +163,7 @@ workflow.add_node('tavily', tavily_search_node)
 workflow.add_node('wikipedia', wikipedia_search_node)
 workflow.add_node('youtube', youtube_search_node)
 workflow.add_node('arXiv', arXiv_search_node)
+workflow.add_node("respond", respond_node)
 workflow.set_entry_point('agent')
 workflow.add_conditional_edges(
     "agent",
@@ -163,7 +181,8 @@ workflow.add_conditional_edges(
         'tavily': 'tavily',
         "wikipedia": 'wikipedia',
         'youtube': 'youtube',
-        'arXiv': 'arXiv'
+        'arXiv': 'arXiv',
+        'respond': 'respond'
     }
 )
 workflow.add_edge('retry', 'agent')
@@ -171,4 +190,5 @@ workflow.add_edge('tavily', 'agent')
 workflow.add_edge('wikipedia', 'agent')
 workflow.add_edge('youtube', 'agent')
 workflow.add_edge('arXiv', 'agent')
+workflow.set_finish_point('respond')
 search_graph= workflow.compile().with_config(run_name="Agent Auto Search")

@@ -1,28 +1,64 @@
 import json
-from arxiv import arxiv
+import arxiv
+from langchain.retrievers import ParentDocumentRetriever
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.stores import BaseStore
 
+from Custom_TavilySearchResults import Custom_TavilySearchResults, Custom_TavilySearchAPIWrapper
+
+
+test_extractor_prompt= ChatPromptTemplate.from_template("""You are a professional context extractor.
+
+Given the following question and context, your task is extract any part of the context *AS IS* that is relevant to answer the question.
+If none of the context is relevant return NO_OUTPUT.
+
+
+<restrictions>
+1. *DO NOT* edit the extracted parts of the context.
+2. *DO NOT* prefixing any response. Just extracted parts of the context.
+</restrictions>
+
+> Question: {question}
+> Context:
+>>>
+{context}
+>>>
+Extracted relevant parts:""")
+
+# llm = get_cohere_model()
+# llm = get_anthropic_model(model_name='sonnet')
+# chain = test_extractor_prompt | llm | StrOutputParser()
 
 def web_search(
-        query: str
+        query: str,
+        datastore: BaseStore,
+        retriever: ParentDocumentRetriever
 ):
     print(query)
     print("---SEARCHING IN WEB(Using TAVILY API)---")
-    tool = TavilySearchResults()
+    tavily_search_tool = Custom_TavilySearchResults(
+        api_wrapper=Custom_TavilySearchAPIWrapper(),
+        include_answer=True,
+        include_raw_content=True
+    )
 
     try:
-        docs = tool.invoke({"query": query, "include_answer": True})
-        web_results = ""
+        search_results = tavily_search_tool.invoke({"query": query})
+        docs = search_results["results"]
+        web_results = f"<overall_summary>{search_results['answer']}</overall_summary>"
+        raw_content_summary = ""
         for index, doc in enumerate(docs, start=1):
-            web_results += f"""<document index="{index}">
-<document_content>
-{doc["content"]}
-</document_content>
-<source>{doc['url']}</source>
-</document>
-"""
+            web_results += (f"<document index='{index}'>\n"
+                            "<document_content>\n"
+                            f"{doc['content']}"
+                            "</document_content>\n"
+                            f"<source>{doc['url']}</source>\n"
+                            "</document>\n\n")
+            # raw_content_summary += chain.invoke({'question': query, 'context': doc['raw_content']}) + "\n\n"
 
         print("---TAVILY SEARCH DONE---")
         return web_results

@@ -5,6 +5,10 @@ from langchain_core.documents import Document
 
 def generate_doc_result(docs: List[Document]):
     doc_results = ""
+
+    if len(docs) == 0:
+        return "<no_documents_found>There is no relevant documents in Vector DB</no_documents_found>"
+
     for idx, doc in enumerate(docs, start=1):
         doc_results += f"""\n<document index="{idx}">"""
 
