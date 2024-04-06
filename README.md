@@ -148,6 +148,21 @@ Which Anthropic model should I use?
 - In all cases, I used Anthropic's **haiku** model! However, when it came to handling the operation of the agent, models beyond haiku, such as **sonnet** and **opus**, provided significantly better performance. It seems that it does not matter which model you use! One thing for certain is that I believe the sonnet or opus models will exhibit much better performance. (I cannot give a definite answer for this part as well, as I have not conducted many tests yet! My apologies!)
 
 
+## ✅ Update Log ✅
+```text
+2024.04.06
+- With the official support for Tool Calling from Anthropic and the corresponding update to LangChain, the function calling has been changed from using XML tags to the official function calling method.
+- With the availability of official tool calling, there have been modifications to the LangSmith prompts and several new classes have been introduced for structured output.
+- In the Retrieve Vector DB stage, I plan to use LangChain's ParentDocumentRetrieve beyond simple similarity search, so preliminary work has been done to enable the use of MongoDB.
+- To fetch the Raw content and AI responses from the Tavily API, I have customized the TavilySearchResults function in LangChain.
+- For smooth usage of Anthropic's agent, I have customized the OutputParser provided by LangChain.
+```
+```text
+2024.04.02
+- Project First Init
+```
+
+
 ## 🔥 FeedBack 🔥
 As a beginner developer, I am greatly seeking diverse feedback from the brilliant developers on GitHub!
 
