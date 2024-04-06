@@ -26,9 +26,11 @@ The main third-pary libraries currently used in this project are:
 #### 6. [Tavily API(Main Search Engine)](https://docs.tavily.com/docs/tavily-api/introduction)
 #### 7. [PineCone(Vector Store)](https://www.pinecone.io/)
 * Vector store provided by LangChain, freely usable with any [vector store supported by LangChain](https://python.langchain.com/docs/integrations/vectorstores). For testing, please use an any Online Vector Store!
-#### 8. YouTube Search(Main Search Engine)
-#### 9. Wikipedia(Main Search Engine)
-#### 10. arXiv(Main Search Engine)
+#### 8. [MongoDB(BaseStore)](https://www.mongodb.com/)
+* 2024.04.06 added -> In the future, will use ParentDocumentRetriever.
+#### 9. YouTube Search(Main Search Engine)
+#### 10. Wikipedia(Main Search Engine)
+#### 11. arXiv(Main Search Engine)
 
 
 The main libraries required for running the project can be found in the **requirements.txt** file.
