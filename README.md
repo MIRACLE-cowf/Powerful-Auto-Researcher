@@ -12,6 +12,8 @@ Thank you for coming by, and please keep an eye out for future updates!
 This project aims to build a more powerful RAG system powered by [LangChain](https://github.com/langchain-ai/langchain), [LangGraph](https://github.com/langchain-ai/langgraph), and [Anthropic](https://www.anthropic.com/).  
 While the project is still in its early experimental stages and there are many steps that I ahead, it is an endeavor that I would like to share with the brilliant developers on GitHub, discussing exciting ideas and possibilities!
 
+**Before you start, you can see Test Case and Result in Test_Case folder!**
+
 ### ❗WARNING❗
 #### **This project may use so many tokens, so be careful!**
 ### ❗WARNING❗
