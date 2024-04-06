@@ -5,6 +5,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 # Anthropic supported calling tool! So we can use structured output to use langchain
 
 class Thought(BaseModel):
+    """Use at THLO stage, thought chain, for structured output"""
     overall_thought: str = Field(description="Write my overall thought.")
     motivation: str = Field(description="My motivation.")
     desired_information: str = Field(description="My desired information.")
@@ -20,18 +21,21 @@ class Thought(BaseModel):
 
 
 class SectionContent(BaseModel):
+    """Use at Section class"""
     overview: str = Field(..., description="A brief overview of the section")
     key_points: List[str] = Field(..., description="The main points to be covered in the section")
     description: str = Field(..., description="Provide a description of the high-level plan for this overview")
 
 
 class Section(BaseModel):
+    """Use at HighLevelDocument_Outline class"""
     name: str = Field(..., description="The name of the section")
     content: List[SectionContent] = Field(...,
                                           description="Provide a description of the high-level plan for this section's content")
 
 
 class HighLevelDocument_Outline(BaseModel):
+    """Use at THLO stage, high_level_outline chain, for structured output"""
     title: str = Field(..., description="The title of the completed document")
     sections: List[Section] = Field(..., description="List the sections of the document.")
 
@@ -60,12 +64,14 @@ class HighLevelDocument_Outline(BaseModel):
 
 
 class SearchModel(BaseModel):
+    """Use at SectionPlan class"""
     search_engine: List[str] = Field(..., description="Choose the search engine to search for this section.")
     search_query: List[str] = Field(...,
                                     description="Enter the search query to be used in the selected search engine for this section.")
 
 
 class SectionPlan(BaseModel):
+    """Use at HighLevelDocument_Plan class"""
     title: str = Field(..., description="The name of the section")
     plan: List[SearchModel] = Field(..., description="Provide a high-level plan of this section")
     explanation: str = Field(..., description="The explanation of the section")
@@ -89,6 +95,7 @@ class SectionPlan(BaseModel):
 
 
 class HighLevelDocument_Plan(BaseModel):
+    """Use at THLO stage, generate_search_query_plans chain, for structured output"""
     title: str = Field(..., description="The title of the completed document")
     sections: List[SectionPlan] = Field(description="Provide a high-level plan of the each sections")
 

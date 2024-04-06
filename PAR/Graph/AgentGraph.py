@@ -2,19 +2,18 @@ import operator
 from typing import TypedDict, Union, Annotated, Dict
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
-from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain import hub
 from langchain_core.agents import AgentAction, AgentFinish
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolExecutor
 
-from CustomHelper.Anthropic_helper import convert_tools, convert_intermediate_steps, format_to_anthropic_tool_messages
+from CustomHelper.Anthropic_helper import format_to_anthropic_tool_messages
 from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_beta
-from CustomHelper.Respond_Agent_Section_Tool import FinalResponseTool, FinalResponse_SectionAgent
-from CustomHelper.Retriever import mongodb_store, parent_retriever
+from Tool.Respond_Agent_Section_Tool import FinalResponseTool, FinalResponse_SectionAgent
+from Util.Retriever_setup import mongodb_store, parent_retriever
 from CustomHelper.load_model import get_anthropic_model
-from CustomSearchFunc import web_search, wikipedia_search, youtube_search, arXiv_search
-from CustomSearchTool import Custom_WikipediaQueryRun, Custom_YouTubeSearchTool, Custom_arXivSearchTool
+from Tool.CustomSearchFunc import web_search, wikipedia_search, youtube_search, arXiv_search
+from Tool.CustomSearchTool import Custom_WikipediaQueryRun, Custom_YouTubeSearchTool, Custom_arXivSearchTool
 
 
 agent_prompt = hub.pull("miracle/par_agent_prompt_public")
@@ -48,6 +47,7 @@ class AgentState(TypedDict):
 
 
 def run_agent(data):
+    """Running Agent stage"""
     print('---RUN AGENT---')
     agent_outcome = chain.invoke(data)
     # print(f"agent outcome:{agent_outcome[0]}")
@@ -61,6 +61,7 @@ def run_agent(data):
 
 
 def router(data):
+    """Routing stage"""
     print('---ROUTER---')
     if isinstance(data['agent_outcome'], AgentFinish):
         if "Try Again!" in data['agent_outcome'].return_values['output']:
@@ -72,6 +73,7 @@ def router(data):
 
 
 def retry_node(data):
+    """In previous versions, claude model is answering "Try Again!. So I put this stages, maybe it will be deprecated."""
     print('---RETRY NODE---')
     data['intermediate_steps'] = []
     return data
@@ -81,6 +83,7 @@ tool_executor = ToolExecutor(tools)
 
 
 def execute_tools(data):
+    """Executing tools stage"""
     print('---EXECUTE TOOLS---')
     agent_action = data['agent_outcome']
     tool_name = agent_action.tool
@@ -99,6 +102,7 @@ def execute_tools(data):
 
 
 def router_tool(data):
+    """Routing Tools stage"""
     if data['keys']['tool'] == 'tavily':
         return 'tavily'
     elif data['keys']['tool'] == 'wikipedia':
@@ -112,6 +116,7 @@ def router_tool(data):
 
 
 def tavily_search_node(data):
+    """TAVILY search node stage"""
     print('---TAVILY SEARCH NODE---')
     agent_action = data['agent_outcome']
     result = web_search(
@@ -125,6 +130,7 @@ def tavily_search_node(data):
 
 
 def wikipedia_search_node(data):
+    """WIKIPEDIA search node stage"""
     print('---WIKIPEDIA SEARCH NODE---')
     agent_action = data['agent_outcome']
     return {
@@ -133,6 +139,7 @@ def wikipedia_search_node(data):
 
 
 def youtube_search_node(data):
+    """YOUTUBE search node stage"""
     print('---YOUTUBE SEARCH NODE---')
     agent_action = data['agent_outcome']
     return {
@@ -141,6 +148,7 @@ def youtube_search_node(data):
 
 
 def arXiv_search_node(data):
+    """ARXIV search node stage"""
     print('---ARXIV SEARCH NODE---')
     agent_action = data['agent_outcome']
     return {
@@ -149,6 +157,7 @@ def arXiv_search_node(data):
 
 
 def respond_node(data):
+    """Respond node stage"""
     print('---RESPOND NODE---')
     return {
         "final_respond": FinalResponse_SectionAgent(section_title=data['keys']['tool_input']['section_title'], section_content=data['keys']['tool_input']['section_content'], section_thought=data['keys']['tool_input']['section_thought'])

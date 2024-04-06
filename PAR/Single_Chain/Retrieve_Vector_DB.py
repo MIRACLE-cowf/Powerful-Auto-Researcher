@@ -1,9 +1,6 @@
-from typing import List
-
 from langchain_core.retrievers import BaseRetriever
-from langchain_core.vectorstores import VectorStore
 
-from MultiQueryChain import derived_queries
+from Single_Chain.MultiQueryChain import derived_queries
 
 
 def search_vector_store(

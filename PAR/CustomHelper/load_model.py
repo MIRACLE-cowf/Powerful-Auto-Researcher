@@ -2,7 +2,6 @@ from langchain_anthropic import ChatAnthropic
 from langchain_anthropic.experimental import ChatAnthropicTools
 from langchain_community.chat_models.cohere import ChatCohere
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from CustomHelper.Anthropic_helper import CustomAnthropicTools
 import os
 from dotenv import load_dotenv
 
@@ -18,6 +17,7 @@ load_dotenv()
 
 
 def get_anthropic_model(model_name="haiku", temperature=0.3) -> ChatAnthropic:
+    """Load the Anthropic model easily. You can freely revise it to make it easier to use."""
     if model_name == 'sonnet':
         model = "claude-3-sonnet-20240229"
     elif model_name == 'haiku':
@@ -35,6 +35,7 @@ def get_anthropic_model(model_name="haiku", temperature=0.3) -> ChatAnthropic:
 
 
 def get_openai_embedding_model(model_name="small") -> OpenAIEmbeddings:
+    """Load the OpenAI embedding model easily. You can freely revise it to make it easier to use."""
     if model_name == 'small':
         model = "text-embedding-3-small"
     else:

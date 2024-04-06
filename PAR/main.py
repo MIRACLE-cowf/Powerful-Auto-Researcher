@@ -1,23 +1,19 @@
-import os
 from typing import TypedDict, Dict
 
-from dotenv import load_dotenv
 from langchain import hub
-from langchain_core.output_parsers import StrOutputParser
 from langchain_text_splitters import CharacterTextSplitter
 from langgraph.graph import StateGraph, END
 from langchain_core.pydantic_v1 import BaseModel, Field
-from AgentGraph import search_graph
+from Graph.AgentGraph import search_graph
 from CustomHelper.Helper import generate_doc_result, generate_final_doc_results
-from CustomHelper.Respond_Agent_Section_Tool import FinalResponse_SectionAgent
-from CustomHelper.Retriever import parent_retriever, mongodb_store
-from CustomHelper.load_model import get_anthropic_model, get_openai_embedding_model
-from GradingDocumentsChain import grading_documents_chain
-from MultiQueryChain import multi_query_chain
-from SearchFunc import search_vector_store
-from langchain_pinecone import PineconeVectorStore
+from Tool.Respond_Agent_Section_Tool import FinalResponse_SectionAgent
+from Util.Retriever_setup import parent_retriever
+from CustomHelper.load_model import get_anthropic_model
+from Single_Chain.GradingDocumentsChain import grading_documents_chain
+from Single_Chain.MultiQueryChain import multi_query_chain
+from Single_Chain.Retrieve_Vector_DB import search_vector_store
 
-from THGGraph import THG_part
+from Graph.THLO_Graph import THLO_Graph
 
 
 generate_prompt = hub.pull("miracle/par_generation_prompt")
@@ -134,7 +130,7 @@ def think_high_level_outline_node(state):
         derived_queries += query + "\n"
 
     print('---IN: HIGH_LEVEL_OUTLINE_GRAPH--')
-    high_level_outline = THG_part.invoke({
+    high_level_outline = THLO_Graph.invoke({
         "original_question": original_query,
         'derived_queries': derived_queries
     })

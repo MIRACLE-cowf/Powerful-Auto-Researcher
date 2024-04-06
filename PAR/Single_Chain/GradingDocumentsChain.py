@@ -2,8 +2,6 @@ from langchain import hub
 from langchain_anthropic.experimental import ChatAnthropic
 from langchain_core.pydantic_v1 import BaseModel, Field
 
-from CustomHelper.Custom_AnthropicOutputParser import AnthropicOutputParser
-
 
 class grade(BaseModel):
     binary_score: str = Field(description="Relevance score 'yes' or 'no'")
