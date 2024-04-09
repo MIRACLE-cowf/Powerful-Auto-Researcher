@@ -9,6 +9,7 @@ from langgraph.prebuilt import ToolExecutor
 
 from CustomHelper.Anthropic_helper import format_to_anthropic_tool_messages
 from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_beta
+from CustomHelper.THLO_helper import SectionPlan
 from Tool.Respond_Agent_Section_Tool import FinalResponseTool, FinalResponse_SectionAgent
 from Util.Retriever_setup import mongodb_store, parent_retriever
 from CustomHelper.load_model import get_anthropic_model
@@ -29,7 +30,7 @@ response_tool = FinalResponseTool()
 tools = [tavilytools, wikipedia, youtube_search_tool, arXiv_search_tool, response_tool]
 chain = (
     {
-        "input": lambda x: x['input'],
+        "input": lambda x: x['section_plan'],
         "agent_scratchpad": lambda x: format_to_anthropic_tool_messages(x['intermediate_steps']),
     }
     | agent_prompt.partial(add_more_restrictions="3. ALWAYS use 'Final-Respond' tool only when all the information about the section has been collected and you are ready to finally inform the user of all the information about the section. If you do not use this tool, you will not be able to forward the results to users, and so you will be penalized.")
@@ -39,7 +40,9 @@ chain = (
 
 
 class AgentState(TypedDict):
-    input: str
+    order: int
+    original_question: str
+    section_plan: SectionPlan
     agent_outcome: Union[AgentAction, AgentFinish, None]
     intermediate_steps: Annotated[list[tuple[AgentAction, str]], operator.add]
     keys: Dict[str, any]
@@ -49,8 +52,9 @@ class AgentState(TypedDict):
 def run_agent(data):
     """Running Agent stage"""
     print('---RUN AGENT---')
-    agent_outcome = chain.invoke(data)
-    # print(f"agent outcome:{agent_outcome[0]}")
+    section_plan = data['section_plan'].as_str()
+    intermediate_steps = data['intermediate_steps']
+    agent_outcome = chain.invoke({'section_plan': section_plan, 'intermediate_steps': intermediate_steps})
 
     if isinstance(agent_outcome, list) and len(agent_outcome) > 0:
         return { "agent_outcome": agent_outcome[0] }
@@ -61,13 +65,9 @@ def run_agent(data):
 
 
 def router(data):
-    """Routing stage"""
     print('---ROUTER---')
     if isinstance(data['agent_outcome'], AgentFinish):
-        if "Try Again!" in data['agent_outcome'].return_values['output']:
-            return "retry"
-        else:
-            return "end"
+        return 'end'
     else:
         return 'tools'
 
@@ -95,10 +95,10 @@ def execute_tools(data):
         return { 'keys': { 'tool': 'youtube', 'tool_input': agent_action.tool_input}}
     elif tool_name == 'arXiv_search':
         return { 'keys': { 'tool': 'arXiv', 'tool_input': agent_action.tool_input}}
+    elif tool_name == "section_complete":
+        return { 'keys': { 'tool': "section_complete", 'tool_input': agent_action.tool_input }}
     else:
-        return { 'keys': { 'tool': "respond", 'tool_input': agent_action.tool_input }}
-    # output = tool_executor.invoke(agent_action)
-    # return { 'intermediate_steps': [(agent_action, str(output))]}
+        return { 'keys': { 'tool': 'retry' }}
 
 
 def router_tool(data):
@@ -111,8 +111,11 @@ def router_tool(data):
         return 'youtube'
     elif data['keys']['tool'] == 'arXiv':
         return 'arXiv'
-    else:
+    elif data['keys']['tool'] == 'section_complete':
         return 'respond'
+    else:
+        return 'retry'
+
 
 
 def tavily_search_node(data):
@@ -148,11 +151,19 @@ def youtube_search_node(data):
 
 
 def arXiv_search_node(data):
-    """ARXIV search node stage"""
+    """ARXIV search node stage
+    In ARXIV search, we use LLM for summary and extract relevant information"""
     print('---ARXIV SEARCH NODE---')
     agent_action = data['agent_outcome']
+    original_question = data['original_question']
+    section_plan = data['section_plan']
+    arXiv_result = arXiv_search(
+        query=data['keys']['tool_input']['query'],
+        original_question=original_question,
+        provided_section=section_plan.as_str_title_explanation()
+    )
     return {
-        'intermediate_steps': [(agent_action, arXiv_search(data['keys']['tool_input']['query']))]
+        'intermediate_steps': [(agent_action, arXiv_result)]
     }
 
 
@@ -160,8 +171,14 @@ def respond_node(data):
     """Respond node stage"""
     print('---RESPOND NODE---')
     return {
-        "final_respond": FinalResponse_SectionAgent(section_title=data['keys']['tool_input']['section_title'], section_content=data['keys']['tool_input']['section_content'], section_thought=data['keys']['tool_input']['section_thought'])
+        "final_respond": FinalResponse_SectionAgent(
+            section_title=data['keys']['tool_input']['section_title'],
+            section_content=data['keys']['tool_input']['section_content'],
+            section_thought=data['keys']['tool_input']['section_thought'],
+        ),
+        "order": data["order"]
     }
+
 
 
 workflow = StateGraph(AgentState)
@@ -191,7 +208,8 @@ workflow.add_conditional_edges(
         "wikipedia": 'wikipedia',
         'youtube': 'youtube',
         'arXiv': 'arXiv',
-        'respond': 'respond'
+        'respond': 'respond',
+        'retry': 'retry'
     }
 )
 workflow.add_edge('retry', 'agent')

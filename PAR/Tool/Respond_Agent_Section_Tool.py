@@ -5,22 +5,29 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.tools import BaseTool
 
 
+#Each parameter's description is changed!
 class FinalResponse_SectionAgent(BaseModel):
-    section_title: str = Field(description="Section Title. DO NOT tagging <section_title> tags")
-    section_content: str = Field(description="section search results. DO NOT tagging <section_content> tags")
-    section_thought: str = Field(description="your final thought about this section. DO NOT tagging <section_thought> tags")
+    section_title: str = Field(description="Title of the section. Start with '##' markdown syntax.")
+    section_content: str = Field(description="Coherent and well-structured content for the section, integrating information from various sources, in Markdown format. If any subtitle is here start with '###' markdown syntax.")
+    section_thought: str = Field(description="Your thoughts, insights and opinion on the section content.")
 
 
 class FinalResponseTool(BaseTool):
-    name: str = 'Final-Respond'
-    description: str = ("This tool is used to return sections search results to users."
-                        "ALWAYS use it only when all the information about the section has been collected and you are ready to finally inform the user of all the information about the section."
-                        "If you do not use this tool, you will not be able to forward the results to users, and so you will be penalized."
-                        "If all the information has not been collected, please do not use it."
-                        "DO NOT TAGGING <result> tags"
-                        "The 'section_title' parameter is the title of the section."
-                        "The 'section_content' parameter is the collection of the section and you can put all the things you can fill in the section."
-                        "Lastly, the 'section_thought' parameter is your final thought of the section so user can know your think.")
+    name: str = 'section_complete'
+    description: str = ("This tool is used to return the final results of a section to the user."
+                        "ONLY use this tool when:"
+                        "1. All relevant information for the section has been collected from various sources like Google, arXiv, YouTube, and Wikipedia."
+                        "2. The collected information has been properly organized and summarized according to the schema."
+                        "3. The 'section_content' parameter has been written in a coherent and contextually natural way based on the collected information in Markdown format."
+                        "4. Your thoughts and some powerful insights on the section content are well reflected in the 'section_thought' parameter."
+                        "Use this tool ONLY when all of the above conditions are met, and you are ready to provide the user with a comprehensive, high-quality result for the section."
+                        "DO NOT use this tool before all information gathering and organization is complete, as you will not be able to deliver the results to the user without using this tool."
+                        "When using the tool, make sure to:"
+                        "- Enter the exact title of the section in the 'section_title' parameter"
+                        "- Provide the information collected from each source in the form of a list, organized according to the respective schemas."
+                        "- Write the 'section_content' parameter based on the collected information, ensuring that it is grammatically correct, easy to read, and smoothly integrates information from different sources in Markdown format."
+                        "- Present your thoughts, insights, and opinions on the section content in the 'section_thought' parameter to help the user understand that you reasoning process and gain additional context."
+                        "Use this tool appropriately to provide the user with comprehensive, high-quality section results.")
     args_schema: Type[FinalResponse_SectionAgent] = FinalResponse_SectionAgent
 
     def _run(
@@ -28,5 +35,5 @@ class FinalResponseTool(BaseTool):
             query: str,
             run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
-        """Use the Wikipedia tool."""
+        """Do Nothing!"""
         return "X"
