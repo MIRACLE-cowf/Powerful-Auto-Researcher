@@ -170,6 +170,7 @@ As a beginner developer, I am greatly seeking diverse feedback from the brillian
 
 I would appreciate any kind of feedback, regardless of the type, be it Python syntax, structure, prompting, readme, etc.!
 
+적극적인 피드백 부탁드립니다!
 
 Thank you!  
 miracle.cowf@gmail.com
