@@ -79,7 +79,7 @@ This enables the model to handle a wider range of thought processes and adaptabi
 
 
 The second powerful aspect of PAR lies in its ability to generate documents autonomously by leveraging custom search engines developed by the project's creators.  
-This allows for extensive searches and the utilization of diverse sources such as Google, arXiv, YouTube, Wikipedia, and more.
+This allows for extensive searches and the utilization of diverse sources such as Tavily, arXiv, YouTube, Wikipedia, and more.
 
 User often invest significant time in conducting searches. To address this issue, PAR aims to integrate results from various search engines to automatically generate documents.  
 These documents are made available for users to access later and are embedded and stored in a vector store for future use in identical or similar content searches.
