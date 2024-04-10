@@ -129,7 +129,10 @@ This increased competition is great for driving further innovation and pushing t
 
 At the same time, I don't think the leaderboard ranking definitively "crowns" Claude 3 as the best language model overall. These models excel at different tasks and have their own strengths and weaknesses. The subjective nature of user voting also means the rankings could fluctuate based on changing user preferences or new model releases.
 
-Ultimately, I see Claude 3's rise as a positive development that will likely motivate other AI labs to double down on their own research to develop even more powerful and capable language models. The competitive landscape is heating up, which bodes well for accelerated progress in this field benefiting everyone.## Key Innovations and Architectural Choices
+Ultimately, I see Claude 3's rise as a positive development that will likely motivate other AI labs to double down on their own research to develop even more powerful and capable language models. The competitive landscape is heating up, which bodes well for accelerated progress in this field benefiting everyone.
+
+
+## Key Innovations and Architectural Choices
 
 ### High-level Architecture Overview
 
