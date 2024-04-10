@@ -150,7 +150,12 @@ Which Anthropic model should I use?
 - In all cases, I used Anthropic's **haiku** model! However, when it came to handling the operation of the agent, models beyond haiku, such as **sonnet** and **opus**, provided significantly better performance. It seems that it does not matter which model you use! One thing for certain is that I believe the sonnet or opus models will exhibit much better performance. (I cannot give a definite answer for this part as well, as I have not conducted many tests yet! My apologies!)
 
 
-## ✅ Update Log ✅
+## ✅ Update Log ✅  
+### 2024.04.10  
+- New updates are now being managed through the GitHub issue tracker. You can check it!
+- Project changes, bug tracking, feature requests, and more can be effectively tracked and documented using issues.
+- In addition to the update log, various topics will be managed systematically through the use of issues.
+- Please refer to the GitHub issues for future updates and changes.
 ```text
 2024.04.06
 - With the official support for Tool Calling from Anthropic and the corresponding update to LangChain, the function calling has been changed from using XML tags to the official function calling method.
