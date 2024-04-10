@@ -1,7 +1,7 @@
 # Question: Where is Claude 3 Opus in the llmsys arena leaderboard?
 - TIME: 775s
 - TOKENS: 770,362
-- [LangSmith Trace]("https://smith.langchain.com/public/5786a5ff-6012-4aec-8f26-5329a7b67667/r")
+- [LangSmith Trace](https://smith.langchain.com/public/5786a5ff-6012-4aec-8f26-5329a7b67667/r)
 - After Generating Document Final Answer:
 ```text
 Final Result: According to the information provided, Claude 3 Opus from Anthropic has taken the top spot on the LLMSys Chatbot Arena leaderboard, surpassing OpenAI's GPT-4 which is now in second place.
