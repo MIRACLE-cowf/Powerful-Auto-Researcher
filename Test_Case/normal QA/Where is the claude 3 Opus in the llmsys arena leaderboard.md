@@ -1,4 +1,4 @@
-# Question: Where is Claude 3 Opus in the llmsys arena leaderboard?
+# Where is Claude 3 Opus in the llmsys arena leaderboard?
 - TIME: 775s
 - TOKENS: 770,362
 - [LangSmith Trace](https://smith.langchain.com/public/5786a5ff-6012-4aec-8f26-5329a7b67667/r)
