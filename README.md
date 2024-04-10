@@ -151,23 +151,24 @@ Which Anthropic model should I use?
 
 
 ## ✅ Update Log ✅  
+### 2024.04.11
+- Now you can find new test cases that have been added after each update in the issue tracker!
 ### 2024.04.10  
 - New updates are now being managed through the GitHub issue tracker. You can check it!
 - Project changes, bug tracking, feature requests, and more can be effectively tracked and documented using issues.
 - In addition to the update log, various topics will be managed systematically through the use of issues.
 - Please refer to the GitHub issues for future updates and changes.
-```text
-2024.04.06
+### 2024.04.06
 - With the official support for Tool Calling from Anthropic and the corresponding update to LangChain, the function calling has been changed from using XML tags to the official function calling method.
 - With the availability of official tool calling, there have been modifications to the LangSmith prompts and several new classes have been introduced for structured output.
 - In the Retrieve Vector DB stage, I plan to use LangChain's ParentDocumentRetrieve beyond simple similarity search, so preliminary work has been done to enable the use of MongoDB.
 - To fetch the Raw content and AI responses from the Tavily API, I have customized the TavilySearchResults function in LangChain.
 - For smooth usage of Anthropic's agent, I have customized the OutputParser provided by LangChain.
-```
-```text
-2024.04.02
+
+
+### 2024.04.02
 - Project First Init
-```
+
 
 
 ## 🔥 FeedBack 🔥
