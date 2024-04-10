@@ -29,7 +29,8 @@ def get_anthropic_model(model_name="haiku", temperature=0.3) -> ChatAnthropic:
         model=model,
         temperature=temperature,
         max_tokens=4096,
-        anthropic_api_key=os.getenv('ANTHROPIC_API_KEY')
+        anthropic_api_key=os.getenv('ANTHROPIC_API_KEY'),
+        default_headers={"anthropic-beta": "tools-2024-04-04"}
     )
     return llm
 

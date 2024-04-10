@@ -1,3 +1,4 @@
+from itertools import zip_longest
 from typing import TypedDict, Dict
 
 from langchain import hub
@@ -21,6 +22,7 @@ generate_prompt = hub.pull("miracle/par_generation_prompt")
 
 
 class PAR_Final_RespondSchema(BaseModel):
+    """This tool allows you to let the user know your answer."""
     background: str = Field(description="Write main background based on provided documents")
     introduction: str= Field(description="Write main introduction based on provided documents")
     excerpts: str = Field(description="Write some important excerpts from the provided documents")
@@ -156,12 +158,23 @@ def composable_search_node(state):
 
 
     print('---AGENT BATCH START---')
-    search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in sections]
-    search_graph_batch_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
+    # In order to avoid hit rate limit, we need to cut two at a time and run them in .batch func
+    search_graph_batch_results = []
+    for section_chunk in zip_longest(*[iter(sections)] * 2, fillvalue=None):
+        valid_sections = [section for section in section_chunk if section is not None]
+        if valid_sections:
+            search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in valid_sections]
+            search_graph_chunk_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
+            search_graph_batch_results.extend(search_graph_chunk_result)
+        # search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in section_chunk if section is not None]
+        # search_graph_chunk_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
+        # search_graph_batch_results.extend(search_graph_chunk_result)
+    # search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in sections]
+    # search_graph_batch_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
     print('---AGENT BATCH END---')
 
     # We perform agent parallel, so we need reordering document's each sections.
-    ordered_results = { search_graph_result['order']: search_graph_result for search_graph_result in search_graph_batch_result}
+    ordered_results = { search_graph_result['order']: search_graph_result for search_graph_result in search_graph_batch_results}
 
     for order in sorted(ordered_results.keys()):
         print(f'---ORDER: {order}---')
@@ -241,7 +254,8 @@ def generate(state):
 
 
     llm = get_anthropic_model(model_name="haiku")
-    rag_chain = generate_prompt | llm.with_structured_output(PAR_Final_RespondSchema)
+    rag_chain = (generate_prompt.partial(additional_restrictions="9. ALWAYS USE 'PAR_Final_RespondSchema' Tool, so the user know your high-level-outline!\n10. Take a careful at the schema of the tool, and use the tool.")
+                 | llm.with_structured_output(PAR_Final_RespondSchema))
 
 
 

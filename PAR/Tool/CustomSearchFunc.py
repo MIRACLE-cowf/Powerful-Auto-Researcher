@@ -37,7 +37,7 @@ def web_search(
         api_wrapper=Custom_TavilySearchAPIWrapper(),
         include_answer=True,
         include_raw_content=True,
-        max_results=2, # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
+        max_results=8, # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
     )
 
     try:
@@ -79,7 +79,7 @@ def youtube_search(
     But in this version, I use concurrent parallel. I will refine this code!"""
     from youtube_search import YoutubeSearch
     print("---SEARCHING IN YOUTUBE---")
-    results = YoutubeSearch(query, max_results=2).to_json()
+    results = YoutubeSearch(query, max_results=5).to_json()
     data = json.loads(results)
 
 
@@ -141,7 +141,7 @@ def arXiv_search(
     arxiv_results = ""
 
     try:
-        docs = ArxivLoader(query=query, load_max_docs=2).load()
+        docs = ArxivLoader(query=query, load_max_docs=5).load()
     except Exception as e:
         error_message = str(e)
         print(f"---ARXIV SEARCH ERROR: {error_message}---")
