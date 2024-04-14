@@ -37,7 +37,7 @@ def web_search(
         api_wrapper=Custom_TavilySearchAPIWrapper(),
         include_answer=True,
         include_raw_content=True,
-        max_results=6, # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
+        max_results=2, # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
     )
 
     try:

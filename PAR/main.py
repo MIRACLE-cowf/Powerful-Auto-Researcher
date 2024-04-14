@@ -5,6 +5,8 @@ from langchain import hub
 from langchain_text_splitters import CharacterTextSplitter
 from langgraph.graph import StateGraph, END
 from langchain_core.pydantic_v1 import BaseModel, Field
+
+from Agent_Team.Project_Manager_Agent import project_manager_graph
 from Graph.AgentGraph import search_graph
 from CustomHelper.Helper import generate_doc_result, generate_final_doc_results
 from Tool.Respond_Agent_Section_Tool import FinalResponse_SectionAgent
@@ -167,13 +169,21 @@ def composable_search_node(state):
     print('---AGENT BATCH START---')
     # In order to avoid hit rate limit, we need to cut two at a time and run them in .batch func
     search_graph_batch_results = []
-    for section_chunk in zip_longest(*[iter(sections)] * 2, fillvalue=None):
-        valid_sections = [section for section in section_chunk if section is not None]
-        if valid_sections:
-            search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in valid_sections]
-            search_graph_chunk_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
-            search_graph_batch_results.extend(search_graph_chunk_result)
+    for section in sections:
+        search_graph_result = project_manager_graph.invoke({"input": section.as_str(), "search_result": ""}, {'recursion_limit': 100})
+        search_graph_batch_results.append(search_graph_result)
+    # for section_chunk in zip_longest(*[iter(sections)] * 2, fillvalue=None):
+    #     valid_sections = [section for section in section_chunk if section is not None]
+    #     if valid_sections:
+    #         search_graph_batch_input = [{"input": section.as_str()} for section in valid_sections]
+    #         search_graph_chunk_result = project_manager_graph.batch(search_graph_batch_input, {"recursion_limit": 100})
+    #         search_graph_batch_results.extend(search_graph_chunk_result)
+    #
+    #         # search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in valid_sections]
+    #         # search_graph_chunk_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
+    #         # search_graph_batch_results.extend(search_graph_chunk_result)
     print('---AGENT BATCH END---')
+    print(search_graph_batch_results)
 
     # We perform agent parallel, so we need reordering document's each sections.
     ordered_results = { search_graph_result['order']: search_graph_result for search_graph_result in search_graph_batch_results}

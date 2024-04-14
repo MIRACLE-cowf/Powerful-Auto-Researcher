@@ -18,6 +18,7 @@ generate_search_query_plans_prompt = hub.pull("miracle/par_generate_search_query
 # Just your judgement. But I'm use "opus" at "high level outline" stage.
 thought_llm = get_anthropic_model(model_name="sonnet")
 high_level_outline_llm = get_anthropic_model(model_name="opus")
+
 generate_search_query_plans_llm = get_anthropic_model(model_name="sonnet")
 generate_search_query_plans_fallback_final = get_anthropic_model(model_name="opus")
 
