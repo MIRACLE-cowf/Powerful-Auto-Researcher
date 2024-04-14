@@ -8,7 +8,8 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from Graph.AgentGraph import search_graph
 from CustomHelper.Helper import generate_doc_result, generate_final_doc_results
 from Tool.Respond_Agent_Section_Tool import FinalResponse_SectionAgent
-from Util.PAR_Helper import extract_result
+from Util.PAR_Helper import extract_result, setup_new_document_format, parse_result_to_document_format, \
+    save_document_to_md
 from Util.Retriever_setup import parent_retriever
 from CustomHelper.load_model import get_anthropic_model
 from Single_Chain.GradingDocumentsChain import grading_documents_chain
@@ -35,6 +36,8 @@ class PAR_Final_RespondSchema(BaseModel):
 class RAG_State(TypedDict):
     original_query: str
     derived_queries: list
+    document_title: str
+    document_description: str
     keys: Dict[str, any]
 
 
@@ -148,13 +151,17 @@ def composable_search_node(state):
     print('---STATE: COMPOSABLE SEARCH NODE---')
     state_dict = state["keys"]
     generation_result = state_dict["high_level_outline"]
+    original_question = state["original_query"]
 
+    document_title = generation_result.title
+    document_description = generation_result.objective
     sections = generation_result.sections
 
-    # For prompt input
-    full_document_draft_prompt = ""
-    # For User
-    full_document_draft_display = ""
+    full_document_draft_display = setup_new_document_format(
+        document_title=document_title,
+        document_description=document_description,
+        original_question=original_question
+    )
 
 
     print('---AGENT BATCH START---')
@@ -166,11 +173,6 @@ def composable_search_node(state):
             search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in valid_sections]
             search_graph_chunk_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
             search_graph_batch_results.extend(search_graph_chunk_result)
-        # search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in section_chunk if section is not None]
-        # search_graph_chunk_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
-        # search_graph_batch_results.extend(search_graph_chunk_result)
-    # search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in sections]
-    # search_graph_batch_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
     print('---AGENT BATCH END---')
 
     # We perform agent parallel, so we need reordering document's each sections.
@@ -191,24 +193,14 @@ def composable_search_node(state):
             print(f"Unexpected agent outcome format: {search_graph_result}")
             raise ValueError(f"Unexpected agent outcome format: {search_graph_result}")
 
-        if isinstance(document, FinalResponse_SectionAgent):
-            full_document_draft_display += f"{document.section_title}\n\n{document.section_content}\n\n\n####Researcher Opinion\n\n{document.section_thought}\n\n\n\n"
-            full_document_draft_prompt += f"#####{document.section_title}#####\n\n{document.section_content}\n\n###Researcher Opinion###\n\n{document.section_thought}\n\n"
-        elif isinstance(document, dict):
-            section_title = document.get("section_title")
-            section_content = document.get("section_content")
-            section_thought = document.get("section_thought")
-            full_document_draft_prompt += f"#####{section_title}#####\n\n{section_content}\n\n###RESEARCHER OPINION###\n\n{section_thought}\n\n"
-            full_document_draft_display += f"{section_title}\n\n{section_content}\n\n\n####RESEARCHER OPINION\n\n{section_thought}\n\n\n\n"
-        else:
-            full_document_draft_display += document
-            full_document_draft_prompt += document
+        full_document_draft_display += parse_result_to_document_format(document=document)
 
     print('---GENERATE DOCUMENT DRAFT DONE---')
 
     return {
+        'document_title': document_title,
+        'document_description': document_description,
         'keys': {
-            'full_document_draft': full_document_draft_prompt,
             'full_document_draft_display': full_document_draft_display
         }
     }
@@ -220,16 +212,13 @@ def generate(state):
     state_dict = state["keys"]
     question = state["original_query"]
     documents = state_dict.get("grading_results", {})
-    full_documents = state_dict.get("full_document_draft", "")
+    document_title = state.get("document_title", "")
     full_documents_display = state_dict.get("full_document_draft_display", "")
 
     documents_for_prompt = ""
-    if full_documents and full_documents_display:
-        documents_for_prompt = full_documents
-
-        print("#####DOCUMENT#####\n\n")
-        print(full_documents_display)
-        print("#####DOCUMENT#####\n\n")
+    if full_documents_display:
+        save_document_to_md(full_document=full_documents_display, document_title=document_title)
+        documents_for_prompt = full_documents_display
         user_response = input('[y/n] Would you want to save this document in Vector Store?: ')
         if user_response == 'y':
             text_splitter = CharacterTextSplitter(
