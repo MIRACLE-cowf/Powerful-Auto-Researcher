@@ -1,32 +1,33 @@
 from langchain_anthropic import ChatAnthropic
-from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from CustomHelper.Anthropic_helper import format_to_anthropic_tool_messages
 from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_beta
-from Tool.CustomSearchTool import Custom_WikipediaQueryRun, Custom_YouTubeSearchTool, Custom_arXivSearchTool
 
 
 def select_prompt_template(agent_specific_role: str) -> dict:
-    print(f"Select prompt template for {agent_specific_role}")
     if agent_specific_role.lower() == 'tavily':
         search_engine = "Tavily"
-        search_engine_description = "- The Tavily Search API optimizes the most relevant information from online sources in a single API call, tailored to the context limitations of LLMs. It also supports better decision-making by returning answers to questions or suggesting follow-up search queries."
+        search_engine_description = "The Tavily Search API optimizes the most relevant information from online sources in a single API call, tailored to the context limitations of LLMs. It also supports better decision-making by returning answers to questions or suggesting follow-up search queries."
+        search_query_tip = "To find in-depth information on a specific domain, field, or knowledge, it is good to use 'search terms' centered around related core concepts, principles, and examples. 'Search keywords' are also not bad."
     elif agent_specific_role.lower() == 'wikipedia':
         search_engine = "Wikipedia"
-        search_engine_description= "- The Wikipedia API is a tool that searches Wikipedia to answer general questions on a wide range of topics. It is useful for finding information about people, places, companies, facts, historical events, and more. It takes a search query as input and returns a summary of relevant Wikipedia content."
+        search_engine_description= "The Wikipedia API is a tool that searches Wikipedia to answer general questions on a wide range of topics. It is useful for finding information about people, places, companies, facts, historical events, and more. It takes a search query as input and returns a summary of relevant Wikipedia content."
+        search_query_tip = "To find basic information such as concepts, definitions, and features, 'search keywords' directly related to the topic are good."
     elif agent_specific_role.lower() == 'youtube':
         search_engine = "YouTube"
-        search_engine_description = "- The YouTube Search API allows you to find videos on YouTube related to a given search query. Simply provide a search term or phrase as input, and the API will return a list of relevant video results from YouTube. This tool is helpful when you need to find video content on a specific topic or answer questions that can be addressed by YouTube videos."
+        search_engine_description = "The YouTube Search API allows you to find videos on YouTube related to a given search query. Simply provide a search term or phrase as input, and the API will return a list of relevant video results from YouTube. This tool is helpful when you need to find video content on a specific topic or answer questions that can be addressed by YouTube videos."
+        search_query_tip = "To find audiovisual materials or tutorials for a specific domain, field, or knowledge, it is good to use 'search terms' combined with 'search keywords'."
     elif agent_specific_role.lower() == 'arxiv':
         search_engine = "ArXiv"
-        search_engine_description  = "- The arXiv Search API enables you to search for academic papers on the arXiv preprint repository based on a provided search query. By inputting a search term or phrase, you can quickly find relevant scholarly articles, research papers, and scientific publications hosted on arXiv. This tool is particularly useful for researchers, students, and anyone seeking to access and explore the latest findings and ideas across various scientific disciplines."
+        search_engine_description  = "The arXiv Search API enables you to search for academic papers on the arXiv preprint repository based on a provided search query. By inputting a search term or phrase, you can quickly find relevant scholarly articles, research papers, and scientific publications hosted on arXiv. This tool is particularly useful for researchers, students, and anyone seeking to access and explore the latest findings and ideas across various scientific disciplines."
+        search_query_tip = "To identify and collect information on scientific fields or the latest research, 'search terms' consisting of core 'keywords' directly related to the topic are good."
     else:
         raise ValueError(f"Unrecognized agent specifier '{agent_specific_role}'")
     return {
         "search_engine": search_engine,
-        "search_engine_description": search_engine_description
+        "search_engine_description": search_engine_description,
+        "search_query_tip": search_query_tip
     }
 
 
@@ -64,22 +65,36 @@ Search Result 1:
 Source: [Title or description of the source]
 URL: [URL of the search result]
 Related Keywords: [Keywords relevant to the search result]
-Content: [Organized content of the search result without summarization]
+Key Points:
+- [Key point 1]
+- [Key point 2]
+- [Key point 3]
+...
+Content: [Organized detailed content of the search result without summarization]
 
 Search Result 2:
 Source: [Title or description of the source]
 URL: [URL of the search result]
 Related Keywords: [Keywords relevant to the search result]
-Content: [Organized content of the search result without summarization]
+Key Points:
+- [Key point 1]
+- [Key point 2]
+- [Key point 3]
+...
+Content: [Organized detailed content of the search result without summarization]
 
 ...
 
-[Insights and analysis of the relationships or differences among the search results]
-</response_format>
+
+Overall insights:
+[Rich insights and analysis of the relationships or differences among the search results]
+</result>
+</example_final_response_format>
 
 <restrictions>
-1. Understand and fully utilize the characteristics and strengths of the {search_engine} search engine.
-{search_engine_description}
+1. Understand and fully utilize the characteristics and strengths of the {search_engine} search engine and search query tip.
+Description: {search_engine_description}
+Query Tip: {search_query_tip}
 2. Use the allocated time and resources for searching and information organization efficiently.
 - Optimize your search strategy to avoid unnecessary searches or duplicate work and focus on key information.
 3. Maintain clear and concise communication with the Manager Agent.
@@ -99,7 +114,7 @@ As a {search_engine} search specialized agent, please provide the best search re
             "input": lambda x: x["input"],
             "agent_scratchpad": lambda x: format_to_anthropic_tool_messages(x["intermediate_steps"])
         }
-        | prompt.partial(search_engine=search_template["search_engine"], search_engine_description=search_template["search_engine_description"])
+        | prompt.partial(search_engine=search_template["search_engine"], search_engine_description=search_template["search_engine_description"], search_query_tip=search_template["search_query_tip"])
         | llm.bind_tools(tools=tools)
         | AnthropicAgentOutputParser_beta()
     )

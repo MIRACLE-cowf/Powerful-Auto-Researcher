@@ -27,7 +27,7 @@ generate_prompt = hub.pull("miracle/par_generation_prompt")
 class PAR_Final_RespondSchema(BaseModel):
     """This tool allows you to let the user know your answer."""
     background: str = Field(description="Write main background based on provided documents")
-    introduction: str= Field(description="Write main introduction based on provided documents")
+    introduction: str = Field(description="Write main introduction based on provided documents")
     excerpts: str = Field(description="Write some important excerpts from the provided documents")
     insights: str = Field(description="Write your thoughts and insights based on provided documents")
     direct_response: str = Field(description="Write your final direct response based on provided documents")
@@ -166,46 +166,30 @@ def composable_search_node(state):
     )
 
 
-    print('---AGENT BATCH START---')
+    print('--- PM AGENT START ---')
     # In order to avoid hit rate limit, we need to cut two at a time and run them in .batch func
+
     search_graph_batch_results = []
     for section in sections:
-        search_graph_result = project_manager_graph.invoke({"input": section.as_str(), "search_result": ""}, {'recursion_limit': 100})
+        search_graph_result = project_manager_graph.invoke({"input": section.as_str(), "search_result": "", "order": section.order}, {'recursion_limit': 100})
         search_graph_batch_results.append(search_graph_result)
-    # for section_chunk in zip_longest(*[iter(sections)] * 2, fillvalue=None):
-    #     valid_sections = [section for section in section_chunk if section is not None]
-    #     if valid_sections:
-    #         search_graph_batch_input = [{"input": section.as_str()} for section in valid_sections]
-    #         search_graph_chunk_result = project_manager_graph.batch(search_graph_batch_input, {"recursion_limit": 100})
-    #         search_graph_batch_results.extend(search_graph_chunk_result)
-    #
-    #         # search_graph_batch_input = [{'original_question': state['original_query'], 'section_plan': section, 'order': section.order} for section in valid_sections]
-    #         # search_graph_chunk_result = search_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
-    #         # search_graph_batch_results.extend(search_graph_chunk_result)
-    print('---AGENT BATCH END---')
+    print('--- PM AGENT DONE ---')
     print(search_graph_batch_results)
 
     # We perform agent parallel, so we need reordering document's each sections.
-    ordered_results = { search_graph_result['order']: search_graph_result for search_graph_result in search_graph_batch_results}
+    ordered_results = {search_graph_result['order']: search_graph_result for search_graph_result in search_graph_batch_results}
 
+    # AgentTeam을 활용하는 시점에서는 PM에이전트의 응답에 문서를 반환하는 것이 아닌
+    # PM에이전트가 응답(AgentFinish)를 한다는 것은 문서 생성 에이전트가 문서를 잘 생성했다는 것이므로, 문서 생성 에이전트의 결과를 따로 반환합니다.
+    # 따라서 더이상 이 함수에서 결과를 처리해 줄 필요가 없습니다.
     for order in sorted(ordered_results.keys()):
         print(f'---ORDER: {order}---')
         search_graph_result = ordered_results[order]
-        if "agent_outcome" in search_graph_result and hasattr(search_graph_result['agent_outcome'], "return_values") and "output" in search_graph_result["agent_outcome"].return_values:
-            extract_agent_result = extract_result(search_graph_result["agent_outcome"].return_values["output"])
-            if extract_agent_result is not None:
-                document = extract_agent_result
-            else:
-                document = search_graph_result["agent_outcome"].return_values["output"]
-        elif "final_respond" in search_graph_result:
-            document = search_graph_result["final_respond"]
-        else:
-            print(f"Unexpected agent outcome format: {search_graph_result}")
-            raise ValueError(f"Unexpected agent outcome format: {search_graph_result}")
+        document = search_graph_result["final_section_document"]
 
         full_document_draft_display += parse_result_to_document_format(document=document)
 
-    print('---GENERATE DOCUMENT DRAFT DONE---')
+    print('---STATE: COMPOSABLE SEARCH NODE DONE---')
 
     return {
         'document_title': document_title,

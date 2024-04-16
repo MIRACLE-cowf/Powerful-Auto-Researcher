@@ -1,8 +1,11 @@
+from typing import Union
+
 from langchain_community.document_loaders.arxiv import ArxivLoader
 from langchain_community.document_loaders.youtube import YoutubeLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
+from CustomHelper.Custom_Error_Handler import PAR_SUCCESS, PAR_ERROR
 from CustomHelper.load_model import get_anthropic_model
 from Tool.Custom_TavilySearchResults import Custom_TavilySearchResults, Custom_TavilySearchAPIWrapper
 
@@ -93,13 +96,14 @@ def transform_raw_content(index: int, raw_content: str) -> str:
 
 def web_search_v2(
         query: str,
-):
+) -> Union[PAR_SUCCESS, PAR_ERROR]:
     print(f"---SEARCHING IN WEB(Using TAVILY API): {query}---")
     tavily_search_tool = Custom_TavilySearchResults(
         api_wrapper=Custom_TavilySearchAPIWrapper(),
         include_answer=True,
         include_raw_content=True,
         max_results=5,
+        include_image=True,
         # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
     )
 
@@ -109,8 +113,22 @@ def web_search_v2(
         if isinstance(search_results, dict) and "results" in search_results:
             docs = search_results["results"]
             web_results = f"<overall_summary>\n{search_results['answer']}\n</overall_summary>\n\n"
-            raw_contents = ""
+            if isinstance(search_results.get("follow_up_questions", []), list) and len(search_results.get("follow_up_questions", [])) > 0:
+                web_results += f"<recommended_follow_up_questions>\n"
+                for index, follow_up_question in enumerate(search_results.get("follow_up_questions"), start=1):
+                    web_results += f"{index}. {follow_up_question}\n"
+                web_results += "</recommended_follow_up_questions>\n"
+            else:
+                pass
+
+            if isinstance(search_results.get("images", []), list) and len(search_results.get("images", [])) > 0:
+                print(f"<tavily_has_images>\n{search_results.get('images')}\n</tavily_has_images>")
+
+            raw_contents = f"<overall_summary>\n{search_results['answer']}\n</overall_summary>\n\n"
             for index, doc in enumerate(docs, start=1):
+                if doc['url'].lower().endswith(".pdf"):
+                    # we don't need to pdf.
+                    continue
                 raw_contents += (f"<document index='{index}'>\n"
                                  "<document_content_snippet>\n"
                                  f"{doc['content']}"
@@ -124,63 +142,84 @@ def web_search_v2(
             extract_raw_contents_result = chain.invoke({"search_query": query, "search_result": raw_contents})
             web_results += f"\n\n<raw_content_extract>\n{extract_raw_contents_result}\n</raw_content_extract>\n\n"
             print("---TAVILY SEARCH DONE---")
-            return web_results
+            return PAR_SUCCESS(web_results)
+            # return web_results
         else:
             error_message = str(search_results) if isinstance(search_results, str) else "Unexpected error occurred!"
             print(f"---TAVILY SEARCH ERROR: {error_message}---")
-            return f"Tavily Search Error! Details: {error_message}\nTry Again!"
+            return PAR_ERROR(error_message)
+            # return f"Tavily Search Error! Details: {error_message}\nTry Again!"
     except Exception as e:
         print(f"---TAVILY SEARCH ERROR: {e}---")
-        return "Tavily Search Error! Try Again!"
+        return PAR_ERROR(str(e))
+        # return "Tavily Search Error! Try Again!"
 
 
 def youtube_search_v2(
         query: str
-) -> str:
+) -> Union[PAR_SUCCESS, PAR_ERROR]:
     from youtube_search import YoutubeSearch
     print("---SEARCHING IN YOUTUBE---")
-    results = YoutubeSearch(query, max_results=5).to_json()
+
+    try:
+        results = YoutubeSearch(query, max_results=5).to_json()
+    except Exception as e:
+        return PAR_ERROR(str(e))
+
     import json
     data = json.loads(results)
     youtube_results = ""
 
     for index, video in enumerate(data["videos"], start=1):
-        loader = YoutubeLoader.from_youtube_url(f"https://www.youtube.com{video['url_suffix']}", add_video_info=True)
-        load = loader.load()
+        loader = YoutubeLoader.from_youtube_url(f"https://www.youtube.com{video['url_suffix']}",
+                                                add_video_info=True)
+        try:
+            load = loader.load()
 
-        if not load and len(load) == 0:
-            continue
-        else:
-            youtube_results += (f"<youtube index={index}\n"
-                                f"<title>{video['title']}</title>"
-                                f"<views>{video['views']}</views>"
-                                f"<publish_time>{video['publish_time']}</publish_time>"
-                                f"<link>{video['link']}</link>"
-                                f"<content>{load[0].page_content}</content>"
-                                f"</youtube>\n\n")
+            if not load and len(load) == 0:
+                continue
+            else:
+                youtube_results += (f"<youtube index={index}\n"
+                                    f"<title>{video['title']}</title>"
+                                    f"<views>{video['views']}</views>"
+                                    f"<publish_time>{video['publish_time']}</publish_time>"
+                                    f"<link>https://www.youtube.com/{video['url_suffix']}</link>"
+                                    f"<content>{load[0].page_content}</content>"
+                                    f"</youtube>\n\n")
+        except Exception as e:
+            print(f"Error occurred while loading video: {str(e)}")
+            pass
 
     youtube_extract_results = chain.invoke({"search_query": query, "search_result": youtube_results})
-    return youtube_extract_results
+    return PAR_SUCCESS(youtube_extract_results)
 
 
 def arxiv_search_v2(
         query: str
-) -> str:
+) -> Union[PAR_SUCCESS, PAR_ERROR]:
     arxiv_results = ""
     try:
-        docs = ArxivLoader(query=query, load_max_docs=3).load()
+        docs = ArxivLoader(query=query, load_max_docs=3, load_all_available_meta=True).load()
     except Exception as e:
         error_message = str(e)
         print(f"---ARXIV SEARCH ERROR: {error_message}---")
-        return f"ArXiv Search Error! Details: {error_message}\nTry Again!"
+        return PAR_ERROR(error_message)
 
     arxiv_results += "<arxiv results>\n"
     print(f'---ARXIV DOC IS GRADING AND EXTRACTING: PARALLEL---')
-    arxiv_batch_input = [{'search_query': query, 'search_result': doc.page_content} for doc in docs]
+
+    def convert_arxiv_raw_data_to_raw_content(doc) -> str:
+        return (f"<arxiv paper title>{doc.metadata['Title']}</arxiv paper>\n"
+                f"<arxiv paper published>{doc.metadata['Published']}</arxiv paper>\n"
+                f"<arxiv entry_id>{doc.metadata['entry_id']}</arxiv entry_id>\n"
+                f"<arxiv paper raw content>\n{doc.page_content}\n</arxiv paper raw content>")
+
+    arxiv_batch_input = [{'search_query': query, 'search_result': convert_arxiv_raw_data_to_raw_content(doc)} for doc in
+                         docs]
     arxiv_batch_result = chain.batch(arxiv_batch_input)
 
     for index, batch in enumerate(arxiv_batch_result, start=1):
         arxiv_results += (f"<document index={index}>\n"
                           f"<extract_result>\n{batch}</extract_result>\n</document>\n\n")
 
-    return arxiv_results
+    return PAR_SUCCESS(arxiv_results)

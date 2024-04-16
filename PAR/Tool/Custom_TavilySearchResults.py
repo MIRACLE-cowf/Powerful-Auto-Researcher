@@ -8,6 +8,13 @@ from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackMan
 class Custom_TavilySearchResults(TavilySearchResults):
     include_answer = False
     include_raw_content = False
+    include_image = False
+    description: str = (
+        "A search engine that provides summarized content from the top search results. "
+        "It performs a Google search for the given query and uses an LLM to generate concise summaries of the raw content from each search result. "
+        "This is useful when you need a quick overview of the main points from multiple sources. "
+        "Input should be a search query."
+    )
 
 
     def _run(
@@ -21,7 +28,8 @@ class Custom_TavilySearchResults(TavilySearchResults):
                 query=query,
                 max_results=self.max_results,
                 include_answer=self.include_answer,
-                include_raw_content=self.include_raw_content
+                include_raw_content=self.include_raw_content,
+                include_images=self.include_image,
             )
         except Exception as e:
             return repr(e)
@@ -91,15 +99,20 @@ class Custom_TavilySearchAPIWrapper(TavilySearchAPIWrapper):
             include_images=include_images,
         )
         if include_answer:
-            return self.clean_results(raw_search_results["results"], raw_search_results["answer"])
+            return self.clean_results(raw_search_results["results"], raw_search_results.get("answer"), raw_search_results.get("follow_up_questions"), raw_search_results.get("images"))
         else:
             return self.clean_results(raw_search_results["results"])
 
-    def clean_results(self, results: List[Dict], answer: str = None) -> Dict:
+    def clean_results(self, results: List[Dict], answer: str = None, follow_up_questions: list = None, images: list = None) -> Dict:
         final_results = {}
         clean_results = []
         if answer is not None:
             final_results["answer"] = answer
+        if follow_up_questions is not None:
+            final_results["follow_up_questions"] = follow_up_questions
+        if images is not None:
+            final_results["images"] = images
+
         for result in results:
             clean_result = {
                 "url": result["url"],

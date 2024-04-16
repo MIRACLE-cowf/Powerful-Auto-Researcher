@@ -25,7 +25,7 @@ wikipedia = Custom_WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 
 
 def run_agent(data):
-    print(f"WIKIPEDIA RUN AGENT: {data}")
+    print(">>>> WIKIPEDIA AGENT RUN <<<<")
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
     agent = create_agent(llm=get_anthropic_model(), tools=[wikipedia], agent_specific_role="Wikipedia")
@@ -40,7 +40,7 @@ def run_agent(data):
 
 
 def router(data):
-    print('---ROUTER---')
+    print('>>>> WIKIPEDIA AGENT ROUTER <<<<')
     if isinstance(data['agent_outcome'], AgentFinish):
         return 'end'
     else:
@@ -48,9 +48,8 @@ def router(data):
 
 
 def wikipedia_node(data):
-    print('---TAVIL---')
+    print('>>>> WIKIPEDIA AGENT SEARCH <<<<')
     agent_action = data['agent_outcome']
-    print(agent_action)
     result = wikipedia_search(query=agent_action.tool_input['query'])
     return {
         'intermediate_steps': [(agent_action, result)]

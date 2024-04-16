@@ -10,7 +10,6 @@ from Tool.CustomSearchFunc_v2 import arxiv_search_v2
 from Tool.CustomSearchTool import Custom_arXivSearchTool
 
 
-
 class AgentState(TypedDict):
     agent_outcome: Union[AgentAction, AgentFinish, None]
     intermediate_steps: Annotated[list[tuple[AgentAction, str]], operator.add]
@@ -22,7 +21,7 @@ arXiv_search_tool = Custom_arXivSearchTool()
 
 
 def run_agent(data):
-    print(f"ARXIV RUN AGENT: {data}")
+    print(">>>> ARXIV AGENT RUN <<<<")
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
     agent = create_agent(llm=get_anthropic_model(), tools=[arXiv_search_tool], agent_specific_role="ArXiv")
@@ -37,7 +36,7 @@ def run_agent(data):
 
 
 def router(data):
-    print('---ROUTER---')
+    print('>>>> ARXIV AGENT ROUTER <<<<')
     if isinstance(data['agent_outcome'], AgentFinish):
         return 'end'
     else:
@@ -45,9 +44,8 @@ def router(data):
 
 
 def arXiv_node(data):
-    print('---TAVIL---')
+    print('>>>> ARXIV AGENT SEARCH <<<<')
     agent_action = data['agent_outcome']
-    print(agent_action)
     result = arxiv_search_v2(query=agent_action.tool_input['query'])
     return {
         'intermediate_steps': [(agent_action, result)]

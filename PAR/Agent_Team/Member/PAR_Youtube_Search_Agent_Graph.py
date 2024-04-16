@@ -1,18 +1,12 @@
 import operator
 from typing import TypedDict, Union, Annotated, Dict, Sequence
-
-from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_core.agents import AgentAction, AgentFinish
-from langchain_core.messages import BaseMessage
 from langgraph.graph import StateGraph, END
 
 from Agent_Team.create_agent import create_agent
 from CustomHelper.load_model import get_anthropic_model
-from Tool.CustomSearchFunc import web_search, wikipedia_search
 from Tool.CustomSearchFunc_v2 import youtube_search_v2
-from Tool.CustomSearchTool import Custom_WikipediaQueryRun, Custom_YouTubeSearchTool
-from Util.Retriever_setup import mongodb_store, parent_retriever
+from Tool.CustomSearchTool import Custom_YouTubeSearchTool
 
 
 class AgentState(TypedDict):
@@ -26,7 +20,7 @@ youtube_search_tool = Custom_YouTubeSearchTool()
 
 
 def run_agent(data):
-    print(f"YouTube RUN AGENT: {data}")
+    print(">>>> YOUTUBE AGENT RUN <<<<")
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
     agent = create_agent(llm=get_anthropic_model(), tools=[youtube_search_tool], agent_specific_role="Youtube")
@@ -41,7 +35,7 @@ def run_agent(data):
 
 
 def router(data):
-    print('---ROUTER---')
+    print('>>>> YOUTUBE AGENT ROUTER <<<<')
     if isinstance(data['agent_outcome'], AgentFinish):
         return 'end'
     else:
@@ -49,9 +43,8 @@ def router(data):
 
 
 def youtube_node(data):
-    print('---YOUTUBE---')
+    print('>>>> YOUTUBE AGENT SEARCH <<<<')
     agent_action = data['agent_outcome']
-    print(agent_action)
     result = youtube_search_v2(query=agent_action.tool_input['query'])
     return {
         'intermediate_steps': [(agent_action, result)]

@@ -24,7 +24,7 @@ tavilytools = TavilySearchResults()
 
 
 def run_agent(data):
-    print(f"TAVILY RUN AGENT: {data}")
+    print(">>>> TAVILY AGENT RUN <<<<")
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
     agent = create_agent(llm=get_anthropic_model(), tools=[tavilytools], agent_specific_role="Tavily")
@@ -39,7 +39,7 @@ def run_agent(data):
 
 
 def router(data):
-    print('---ROUTER---')
+    print('>>>> TAVILY AGENT ROUTER <<<<')
     if isinstance(data['agent_outcome'], AgentFinish):
         return 'end'
     else:
@@ -47,9 +47,8 @@ def router(data):
 
 
 def tavily_node(data):
-    print('---TAVIL---')
+    print('>>>> TAVILY AGENT SEARCH <<<<')
     agent_action = data['agent_outcome']
-    print(agent_action)
     result = web_search_v2(
         query=agent_action.tool_input['query'],
     )

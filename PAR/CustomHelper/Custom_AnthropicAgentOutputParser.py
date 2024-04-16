@@ -42,7 +42,7 @@ class AnthropicAgentOutputParser_beta(AgentOutputParser):
             raise OutputParserException(
                 "This output parser can only be used with a chat generation."
             )
-        print(f"AGENT OUTCOME: {generation.message.content}")
+        # print(f"AGENT OUTCOME: {generation.message.content}")
         if is_tool_use(generation.message.content):
             actions: List = []
             message_content = generation.message.content
