@@ -1,10 +1,18 @@
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List, Dict, Type
 
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
+from langchain_core.pydantic_v1 import BaseModel, Field
 
 from CustomHelper.Custom_Error_Handler import PAR_ERROR
+
+
+class TavilyInput(BaseModel):
+   """Input for the Tavily tool."""
+
+   query: str = Field(description="The search query to look up using the Tavily Search API.")
+   max_results: int = Field(default=3, ge=2, le=6, description="The maximum number of search results to return. Must be between 2 and 6. Default value is 3")
 
 
 class Custom_TavilySearchResults(TavilySearchResults):
@@ -12,11 +20,13 @@ class Custom_TavilySearchResults(TavilySearchResults):
     include_raw_content = False
     include_image = False
     description: str = (
-        "A search engine that provides summarized content from the top search results. "
-        "It performs a Google search for the given query and uses an LLM to generate concise summaries of the raw content from each search result. "
-        "This is useful when you need a quick overview of the main points from multiple sources. "
-        "Input should be a search query."
+        "An advanced search engine that delivers comprehensive, accurate, and trustworthy results. "
+        "It is particularly useful for answering questions about current events, news, and general knowledge. "
+        "The input should be a well-formed search query, and the tool will return up to the specified maximum number of relevant results in JSON format. "
+        "In addition to the search query, you can also specify the maximum number of results to retrieve, allowing for dynamic control over the amount of information returned."
     )
+    max_results: int = 3
+    args_schema: Type[BaseModel] = TavilyInput
 
 
     def _run(
@@ -34,6 +44,7 @@ class Custom_TavilySearchResults(TavilySearchResults):
                 include_images=self.include_image,
             )
         except Exception as e:
+            print(f'TAVILY API occur error! {str(e)}')
             raise PAR_ERROR(str(e))
             # return repr(e)
 
@@ -51,6 +62,7 @@ class Custom_TavilySearchResults(TavilySearchResults):
                 include_raw_content=self.include_raw_content
             )
         except Exception as e:
+            print(f'TAVILY API occur error! {str(e)}')
             raise PAR_ERROR(str(e))
             # return repr(e)
 

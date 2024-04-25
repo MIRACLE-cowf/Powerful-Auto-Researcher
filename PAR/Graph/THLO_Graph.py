@@ -1,5 +1,5 @@
 from operator import itemgetter
-from typing import TypedDict, Dict
+from typing import TypedDict
 
 from langchain import hub
 from langgraph.graph import StateGraph
@@ -18,7 +18,7 @@ generate_search_query_plans_prompt = hub.pull("miracle/par_generate_search_query
 thought_llm = get_anthropic_model(model_name="sonnet")
 high_level_outline_llm = get_anthropic_model(model_name="opus")
 
-generate_search_query_plans_llm = get_anthropic_model(model_name="sonnet")
+generate_search_query_plans_llm = get_anthropic_model(model_name="opus")
 generate_search_query_plans_fallback_final = get_anthropic_model(model_name="opus")
 
 
@@ -50,7 +50,7 @@ Search Engine 2:
 >> description: It is an online encyclopedia covering a wide range of topics. It allows you to quickly collect basic information on concepts, people, events, places, etc. from various fields. As it is an online encyclopedia, it is written and edited by many people online. Although efforts are made to maintain the latest information and neutrality of the content, verification with other reliable searches is required. It is suitable for quickly grasping an overview of a topic or domain, confirming the definition of a term, or as a starting point for in-depth research. It contains a lot of information that helps build general common sense and knowledge rather than academic research. However, there may be cases where there are no results when searching for a specific domain or topic. The return results basically provide a pair of the Wikipedia page name for a specific topic and an overall summary of the page content.
 Search Engine 3:
 >> name: arxiv
->> description: It is a search engine that shares the latest research in various and wide-ranging scientific fields such as physics, mathematics, computer science, and biology. It is useful for quickly grasping and collecting the latest research results and trends. However, the quality and accuracy of the papers are the responsibility of the authors, so careful evaluation is necessary. Generally, compared to other search engines, it contains a lot of professional and technical content, so it is mainly used when highly deep and specialized knowledge, in-depth information, or the latest research techniques and methodologies are needed for a particular field, topic, or domain. The return results basically provide a summary and extraction of specific content by the LLM for the full text of the papers from the arxiv search.
+>> description: ArXiv is a search engine that shares the latest research in various and wide-ranging scientific fields such as physics, mathematics, computer science, and biology. It is primarily used when highly deep and specialized knowledge, in-depth information, or the latest research techniques and methodologies are needed for a particular topic or domain. However, the quality and accuracy of the papers are the responsibility of the authors, so careful evaluation is necessary. Generally, compared to other search engines, it contains a lot of professional and technical content. Therefore, it is recommended to selectively utilize arXiv searches when you have sufficient expertise and background knowledge on the subject or field. The return results basically provide a summary and extraction of specific content by the LLM for the full text of the papers found through the arXiv search.
 Search Engine 4:
 >> name: youtube
 >> description: It is generally optimized for video searches. However, it is not a typical video search but an API-style search. For videos that support transcripts, the LLM looks at the transcript and extracts content directly related to the search query. The return results include the video title, view count, upload date, content extracted by the LLM about the video, and a summary. Therefore, it is useful when you need actual cases, demonstrations, interviews, or other audiovisual materials for a certain domain, when you need lectures or tutorials, or when you need product reviews or usage tips. However, as mentioned earlier, it is only useful for videos with transcripts."""
@@ -63,7 +63,7 @@ high_level_outline_chain = (
     }
     | high_level_outline_prompt.partial(additional_instructions="",
                                         search_engines=search_engines_description,
-                                        additional_restrictions="7. ALWAYS USE 'HighLevelDocument_Outline' Tool, so the user know your high-level-outline!\n8. Take a careful at the schema of the tool, and use the tool.")
+                                        additional_restrictions="10. ALWAYS USE 'HighLevelDocument_Outline' Tool, so the user know your high-level-outline! Take a careful at the schema of the tool, and use the tool.")
     | high_level_outline_llm.with_structured_output(HighLevelDocument_Outline)
     | high_level_outline_parser
 
@@ -76,8 +76,8 @@ tool_description_with_search_query_tip = """Tool 1:
 >> search query tip: To find in-depth information on a specific domain, field, or knowledge, it is good to use 'search terms' centered around related core concepts, principles, and examples. 'Search keywords' are also not bad.
 Tool 2:
 >> name: arxiv_search
->> description: It is a search engine that shares the latest research in various and wide-ranging scientific fields such as physics, mathematics, computer science, and biology. It is useful for quickly grasping and collecting the latest research results and trends. However, the quality and accuracy of the papers are the responsibility of the authors, so careful evaluation is necessary. Generally, compared to other search engines, it contains a lot of professional and technical content, so it is mainly used when highly deep and specialized knowledge, in-depth information, or the latest research techniques and methodologies are needed for a particular field, topic, or domain. The return results basically provide a summary and extraction of specific content by the LLM for the full text of the papers from the arxiv search.
->> search query tip: To identify and collect information on scientific fields or the latest research, 'search terms' consisting of core 'keywords' directly related to the topic are good.
+>> description: arXiv is a search engine that shares the latest research in various and wide-ranging scientific fields such as physics, mathematics, computer science, and biology. It is primarily used when highly deep and specialized knowledge, in-depth information, or the latest research techniques and methodologies are needed for a particular topic or domain. However, the quality and accuracy of the papers are the responsibility of the authors, so careful evaluation is necessary. Generally, compared to other search engines, it contains a lot of professional and technical content. Therefore, it is recommended to selectively utilize arXiv searches when you have sufficient expertise and background knowledge on the subject or field. The return results basically provide a summary and extraction of specific content by the LLM for the full text of the papers found through the arXiv search.
+>> search query tip: To identify and collect information on scientific fields or the latest research, 'search terms' consisting of core 'keywords' directly related to the topic are good. However, avoid using overly professional or technical terms, and select search terms based on a basic understanding and background knowledge of the relevant field for effective results.
 Tool 3:
 >> name: youtube_search
 >> description: It is generally optimized for video searches. However, it is not a typical video search but an API-style search. For videos that support transcripts, the LLM looks at the transcript and extracts content directly related to the search query. The return results include the video title, view count, upload date, content extracted by the LLM about the video, and a summary. Therefore, it is useful when you need actual cases, demonstrations, interviews, or other audiovisual materials for a certain domain, when you need lectures or tutorials, or when you need product reviews or usage tips. However, as mentioned earlier, it is only useful for videos with transcripts.
@@ -96,14 +96,13 @@ generate_search_query_plans_chain = (
         "high_level_outline": itemgetter("high_level_outline")
     }
     | generate_search_query_plans_prompt.partial(
-        additional_restrictions="4. ALWAYS USE 'HighLevelDocument_Plan' Tool, so the user know your plan!\n5. Take a careful at the schema of the tool, and use the tool.",
-        tools=tool_description_with_search_query_tip)
+        additional_restrictions="7. ALWAYS USE 'HighLevelDocument_Plan' Tool, so the user know your plan! Take a careful at the schema of the tool, and use the tool.\n8. **ALWAYS USE ENGLISH**",
+        tools=tool_description_with_search_query_tip
+        )
     | generate_search_query_plans_llm.with_structured_output(HighLevelDocument_Plan)
     | generate_search_query_plans_parser
 )
 
-
-# I found few bugs in generate search query plans stage, so try to handle fallback.
 generate_search_query_plans_chain_for_first_fallback = (
     {
         "original_question": itemgetter("original_question"),
@@ -111,12 +110,13 @@ generate_search_query_plans_chain_for_first_fallback = (
         "high_level_outline": itemgetter("high_level_outline")
     }
     | generate_search_query_plans_prompt.partial(
-        additional_restrictions="4. ALWAYS USE 'HighLevelDocument_Plan' Tool, so the user know your plan!\n5. Take a careful at the schema of the tool, and use the tool.",
+        additional_restrictions="7. ALWAYS USE 'HighLevelDocument_Plan' Tool, so the user know your plan! Take a careful at the schema of the tool, and use the tool.\n8. **ALWAYS USE ENGLISH**",
         tools=tool_description_with_search_query_tip
     )
     | generate_search_query_plans_llm.with_structured_output(HighLevelDocument_Plan)
     | generate_search_query_plans_parser
 )
+
 generate_search_query_plans_chain_final_fallback = (
     {
         "original_question": itemgetter("original_question"),
@@ -124,7 +124,7 @@ generate_search_query_plans_chain_final_fallback = (
         "high_level_outline": itemgetter("high_level_outline")
     }
     | generate_search_query_plans_prompt.partial(
-        additional_restrictions="4. ALWAYS USE 'HighLevelDocument_Plan' Tool, so the user know your plan!\n5. Take a careful at the schema of the tool, and use the tool.",
+        additional_restrictions="7. ALWAYS USE 'HighLevelDocument_Plan' Tool, so the user know your plan! Take a careful at the schema of the tool, and use the tool.\n8. **ALWAYS USE ENGLISH**",
         tools=tool_description_with_search_query_tip
     )
     | generate_search_query_plans_fallback_final.with_structured_output(HighLevelDocument_Plan)

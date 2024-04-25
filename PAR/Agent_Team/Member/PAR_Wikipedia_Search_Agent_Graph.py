@@ -1,17 +1,15 @@
 import operator
-from typing import TypedDict, Union, Annotated, Dict, Sequence
+from typing import TypedDict, Union, Annotated, Dict
 
-from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_core.agents import AgentAction, AgentFinish
-from langchain_core.messages import BaseMessage
 from langgraph.graph import StateGraph, END
 
 from Agent_Team.create_agent import create_agent
+from CustomHelper.Agent_outcome_checker import agent_outcome_checker
 from CustomHelper.load_model import get_anthropic_model
-from Tool.CustomSearchFunc import web_search, wikipedia_search
+from Tool.CustomSearchFunc import wikipedia_search
 from Tool.CustomSearchTool import Custom_WikipediaQueryRun
-from Util.Retriever_setup import mongodb_store, parent_retriever
 
 
 class AgentState(TypedDict):
@@ -29,14 +27,7 @@ def run_agent(data):
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
     agent = create_agent(llm=get_anthropic_model(), tools=[wikipedia], agent_specific_role="Wikipedia")
-    agent_outcome = agent.invoke({"input": input, "intermediate_steps": intermediate_steps})
-
-    if isinstance(agent_outcome, list) and len(agent_outcome) > 0:
-        return {"agent_outcome": agent_outcome[0]}
-    elif isinstance(agent_outcome, AgentFinish):
-        return {"agent_outcome": agent_outcome}
-    else:
-        raise ValueError(f"Unexpected agent_outcome: {agent_outcome}")
+    return agent_outcome_checker(agent=agent, input=input, intermediate_steps=intermediate_steps)
 
 
 def router(data):

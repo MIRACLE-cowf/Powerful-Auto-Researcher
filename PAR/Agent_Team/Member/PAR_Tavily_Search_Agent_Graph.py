@@ -1,16 +1,14 @@
 import operator
-from typing import TypedDict, Union, Annotated, Dict, Sequence
+from typing import TypedDict, Union, Annotated, Dict
 
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_core.agents import AgentAction, AgentFinish
-from langchain_core.messages import BaseMessage
 from langgraph.graph import StateGraph, END
 
 from Agent_Team.create_agent import create_agent
+from CustomHelper.Agent_outcome_checker import agent_outcome_checker
 from CustomHelper.load_model import get_anthropic_model
-from Tool.CustomSearchFunc import web_search
 from Tool.CustomSearchFunc_v2 import web_search_v2
-from Util.Retriever_setup import mongodb_store, parent_retriever
 
 
 class AgentState(TypedDict):
@@ -27,15 +25,8 @@ def run_agent(data):
     print(">>>> TAVILY AGENT RUN <<<<")
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
-    agent = create_agent(llm=get_anthropic_model(), tools=[tavilytools], agent_specific_role="Tavily")
-    agent_outcome = agent.invoke({"input": input, "intermediate_steps": intermediate_steps})
-
-    if isinstance(agent_outcome, list) and len(agent_outcome) > 0:
-        return {"agent_outcome": agent_outcome[0]}
-    elif isinstance(agent_outcome, AgentFinish):
-        return {"agent_outcome": agent_outcome}
-    else:
-        raise ValueError(f"Unexpected agent_outcome: {agent_outcome}")
+    agent = create_agent(llm=get_anthropic_model(model_name="sonnet"), tools=[tavilytools], agent_specific_role="Tavily")
+    return agent_outcome_checker(agent=agent, input=input, intermediate_steps=intermediate_steps)
 
 
 def router(data):
@@ -51,6 +42,7 @@ def tavily_node(data):
     agent_action = data['agent_outcome']
     result = web_search_v2(
         query=agent_action.tool_input['query'],
+        max_results=agent_action.tool_input['max_results'],
     )
     return {
         'intermediate_steps': [(agent_action, result)]

@@ -95,14 +95,15 @@ def transform_raw_content(index: int, raw_content: str) -> str:
 
 
 def web_search_v2(
-        query: str,
+    query: str,
+    max_results: int
 ) -> Union[PAR_SUCCESS, PAR_ERROR]:
     print(f"---SEARCHING IN WEB(Using TAVILY API): {query}---")
     tavily_search_tool = Custom_TavilySearchResults(
         api_wrapper=Custom_TavilySearchAPIWrapper(),
         include_answer=True,
         include_raw_content=True,
-        max_results=5,
+        max_results=max_results,
         include_image=True,
         # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
     )

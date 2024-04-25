@@ -1,10 +1,11 @@
 import operator
-from typing import TypedDict, Union, Annotated, Dict, Sequence
+from typing import TypedDict, Union, Annotated, Dict
 
 from langchain_core.agents import AgentAction, AgentFinish
 from langgraph.graph import StateGraph, END
 
 from Agent_Team.create_agent import create_agent
+from CustomHelper.Agent_outcome_checker import agent_outcome_checker
 from CustomHelper.load_model import get_anthropic_model
 from Tool.CustomSearchFunc_v2 import arxiv_search_v2
 from Tool.CustomSearchTool import Custom_arXivSearchTool
@@ -25,14 +26,7 @@ def run_agent(data):
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
     agent = create_agent(llm=get_anthropic_model(), tools=[arXiv_search_tool], agent_specific_role="ArXiv")
-    agent_outcome = agent.invoke({"input": input, "intermediate_steps": intermediate_steps})
-
-    if isinstance(agent_outcome, list) and len(agent_outcome) > 0:
-        return {"agent_outcome": agent_outcome[0]}
-    elif isinstance(agent_outcome, AgentFinish):
-        return {"agent_outcome": agent_outcome}
-    else:
-        raise ValueError(f"Unexpected agent_outcome: {agent_outcome}")
+    return agent_outcome_checker(agent=agent, input=input, intermediate_steps=intermediate_steps)
 
 
 def router(data):

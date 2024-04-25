@@ -6,7 +6,7 @@ from langchain_core.agents import AgentAction, AgentFinish
 from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.pydantic_v1 import BaseModel, Field
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph
 
 from Agent_Team.Member.PAR_ArXiv_Search_Agent_Graph import PAR_Team_Member_Agent_ArXiv
 from Agent_Team.Member.PAR_Document_Writer import Document_Writer_chain
@@ -28,7 +28,7 @@ class route(BaseModel):
         "tavily_agent", "document_agent", "wikipedia_agent", "youtube_agent", "arxiv_agent"] = Field(...,
                                                                                                                description="Select the next agent")
     instructions: str = Field(...,
-                              description="Provide specific and clear instructions that next agent what should do.")
+                              description="Provide specific, clear, and detailed instructions that next agent what should do.")
 
 
 PM_Prompt = ChatPromptTemplate.from_messages([

@@ -20,7 +20,9 @@ def select_prompt_template(agent_specific_role: str) -> dict:
         search_query_tip = "To find audiovisual materials or tutorials for a specific domain, field, or knowledge, it is good to use 'search terms' combined with 'search keywords'."
     elif agent_specific_role.lower() == 'arxiv':
         search_engine = "ArXiv"
-        search_engine_description  = "The arXiv Search API enables you to search for academic papers on the arXiv preprint repository based on a provided search query. By inputting a search term or phrase, you can quickly find relevant scholarly articles, research papers, and scientific publications hosted on arXiv. This tool is particularly useful for researchers, students, and anyone seeking to access and explore the latest findings and ideas across various scientific disciplines."
+        search_engine_description = ("The arXiv Search API enables you to search for academic papers on the arXiv preprint repository based on a provided search query. By inputting a search term or "
+                                      "phrase, you can quickly find relevant scholarly articles, research papers, and scientific publications hosted on arXiv. This tool is particularly useful for "
+                                      "researchers, students, and anyone seeking to access and explore the latest findings and ideas across various scientific disciplines.")
         search_query_tip = "To identify and collect information on scientific fields or the latest research, 'search terms' consisting of core 'keywords' directly related to the topic are good."
     else:
         raise ValueError(f"Unrecognized agent specifier '{agent_specific_role}'")
