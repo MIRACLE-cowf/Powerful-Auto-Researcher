@@ -107,8 +107,10 @@ def web_search_v2(
         # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
     )
 
+    tavily_search_tool_with_fallbacks = tavily_search_tool.with_fallbacks([tavily_search_tool] * 5)
+
     try:
-        search_results = tavily_search_tool.invoke({"query": query})
+        search_results = tavily_search_tool_with_fallbacks.invoke({"query": query})
 
         if isinstance(search_results, dict) and "results" in search_results:
             docs = search_results["results"]

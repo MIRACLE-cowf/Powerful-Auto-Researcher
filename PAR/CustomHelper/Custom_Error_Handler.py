@@ -10,7 +10,7 @@ class PAR_ERROR(Exception):
     Attributes:
         message (str): The error message associated with the exception.
     """
-    def __init__(self, message):
+    def __init__(self, message: str):
         self.message = message
 
 

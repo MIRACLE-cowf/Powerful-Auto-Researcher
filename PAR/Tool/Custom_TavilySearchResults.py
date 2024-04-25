@@ -4,6 +4,8 @@ from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 
+from CustomHelper.Custom_Error_Handler import PAR_ERROR
+
 
 class Custom_TavilySearchResults(TavilySearchResults):
     include_answer = False
@@ -32,7 +34,8 @@ class Custom_TavilySearchResults(TavilySearchResults):
                 include_images=self.include_image,
             )
         except Exception as e:
-            return repr(e)
+            raise PAR_ERROR(str(e))
+            # return repr(e)
 
     async def _arun(
         self,
@@ -48,7 +51,8 @@ class Custom_TavilySearchResults(TavilySearchResults):
                 include_raw_content=self.include_raw_content
             )
         except Exception as e:
-            return repr(e)
+            raise PAR_ERROR(str(e))
+            # return repr(e)
 
 
 class Custom_TavilySearchAPIWrapper(TavilySearchAPIWrapper):
