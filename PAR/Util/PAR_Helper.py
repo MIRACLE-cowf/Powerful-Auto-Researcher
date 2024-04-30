@@ -46,7 +46,7 @@ def extract_result(text):
             "section_thought": match_section_thought.group(1).strip()
         }
     else:
-        return None
+        return text
 
 
 def parse_result_to_document_format(document: dict | FinalResponse_SectionAgent | str) -> str:

@@ -1,10 +1,10 @@
 from langchain_core.retrievers import BaseRetriever
 
-from Single_Chain.MultiQueryChain import derived_queries
+from Single_Chain.MultiQueryChain import DerivedQueries
 
 
 def search_vector_store(
-        multi_query: derived_queries,
+        multi_query: DerivedQueries,
         retriever: BaseRetriever,
         k=3
 ):

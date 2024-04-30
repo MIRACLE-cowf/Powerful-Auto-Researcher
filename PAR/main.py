@@ -1,24 +1,21 @@
-from itertools import zip_longest
 from typing import TypedDict, Dict
 
 from langchain import hub
+from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_text_splitters import CharacterTextSplitter
 from langgraph.graph import StateGraph, END
-from langchain_core.pydantic_v1 import BaseModel, Field
 
 from Agent_Team.Project_Manager_Agent import project_manager_graph
-from Graph.AgentGraph import search_graph
 from CustomHelper.Helper import generate_doc_result, generate_final_doc_results
-from Tool.Respond_Agent_Section_Tool import FinalResponse_SectionAgent
-from Util.PAR_Helper import extract_result, setup_new_document_format, parse_result_to_document_format, \
-    save_document_to_md
-from Util.Retriever_setup import parent_retriever
 from CustomHelper.load_model import get_anthropic_model
-from Single_Chain.GradingDocumentsChain import grading_documents_chain
-from Single_Chain.MultiQueryChain import multi_query_chain
-from Single_Chain.Retrieve_Vector_DB import search_vector_store
-
 from Graph.THLO_Graph import THLO_Graph
+from Single_Chain.ConclustionChain import conclusion_chain
+from Single_Chain.GradingDocumentsChain import grading_documents_chain
+from Single_Chain.MultiQueryChain import multi_query_chain, DerivedQueries
+from Single_Chain.Retrieve_Vector_DB import search_vector_store
+from Util.PAR_Helper import setup_new_document_format, parse_result_to_document_format, \
+	save_document_to_md
+from Util.Retriever_setup import parent_retriever
 from Util.console_controller import clear_console, print_warning_message, print_see_you_again
 
 generate_prompt = hub.pull("miracle/par_generation_prompt")
@@ -37,30 +34,31 @@ class PAR_Final_RespondSchema(BaseModel):
 
 class RAG_State(TypedDict):
     original_query: str
-    derived_queries: list
+    derived_queries: DerivedQueries
     document_title: str
     document_description: str
     keys: Dict[str, any]
 
 
-def multi_query_generator_node(state):
-    print("---STATE: GENERATE QUERY IN---")
+def multi_query_generator_node(state: RAG_State):
+    print("---MAIN STATE: MULTI QUERY GENERATOR IN---")
     original_query = state["original_query"]
     multi_query_result = multi_query_chain(model=get_anthropic_model()).invoke({"question": original_query})
-    print("---STATE: GENERATE QUERY OUT---")
+    print("---MAIN STATE: MULTI QUERY GENERATOR OUT---")
+
     return {
-        "derived_queries": multi_query_result
+        'derived_queries': multi_query_result
     }
 
 
-def retrieve_node(state):
-    print("---STATE: RETRIEVE NODE IN---")
-    multi_queries = state["derived_queries"]
+def retrieve_node(state: RAG_State):
+    print("---MAIN STATE: RETRIEVE IN VECTOR DB---")
+    multi_queries = state['derived_queries']
     retrieve_result = search_vector_store(
         multi_query=multi_queries,
         retriever=parent_retriever
     )
-    print("---STATE: RETRIEVE NODE OUT---")
+    print("---MAIN STATE: RETRIEVE OUT VECTOR DB---")
 
     return {
         "keys": {
@@ -69,10 +67,10 @@ def retrieve_node(state):
     }
 
 
-def grade_document(state):
-    print("---STATE: GRADING DOCUMENTS IN---")
+def grade_document(state: RAG_State):
+    print("---MAIN STATE: GRADING DOCUMENTS START---")
     state_dict = state["keys"]
-    retrieve_result = state_dict["retrieve_result"]
+    retrieve_result = state_dict['retrieve_result']
     index = 1
     grading_results = {}
 
@@ -88,7 +86,7 @@ def grade_document(state):
 
         grade = grade_result.binary_score
 
-        if grade == "yes":
+        if grade == 'yes':
             print(f"---{new_query} GRADE: DOCUMENT RELEVANT---")
             final_doc_results = ""
             final_doc_results += generate_final_doc_results(documents, index)
@@ -98,7 +96,7 @@ def grade_document(state):
             print(f"---{new_query} GRADE: DOCUMENT NOT RELEVANT---")
             grading_results[new_query] = "needsearch"
 
-    print("---STATE: GRADING DOCUMENTS OUT---")
+    print("---MAIN STATE: GRADING DOCUMENTS DONE---")
     return {
         "keys": {
             "grading_results": grading_results
@@ -106,8 +104,8 @@ def grade_document(state):
     }
 
 
-def decide_to_generate(state):
-    print("---STATE: DECIDE to GENERATE IN---")
+def decide_to_generate(state: RAG_State):
+    print("---MAIN STATE: DECIDE to GENERATE---")
     state_dict = state["keys"]
     grading_results = state_dict["grading_results"]
 
@@ -116,17 +114,18 @@ def decide_to_generate(state):
         if result == "needsearch":
             cnt += 1
 
-    # print(f"needsearch count: {cnt}")
-    print("---STATE: DECIDE to GENERATE OUT---")
+    print(f"needsearch count: {cnt}")
 
     if cnt > 0:
+        print("---MAIN STATE: DECIDE THLO STAGE---")
         return "think_high_level_outline"
     else:
+        print("---MAIN STATE: DECIDE GENERATE FINAL ANSWER---")
         return "generate"
 
 
-def think_high_level_outline_node(state):
-    print('---STATE: THINK HIGH LEVEL OUTLINE NODE---')
+def think_high_level_outline_node(state: RAG_State):
+    print('---MAIN STATE: THINK HIGH LEVEL OUTLINE GRAPH START---')
     state_dict = state["keys"]
     grading_results = state_dict["grading_results"]
     original_query = state["original_query"]
@@ -134,23 +133,21 @@ def think_high_level_outline_node(state):
     for query, _ in grading_results.items():
         derived_queries += query + "\n"
 
-    print('---IN: HIGH_LEVEL_OUTLINE_GRAPH--')
     high_level_outline = THLO_Graph.invoke({
         "original_question": original_query,
         'derived_queries': derived_queries
     })
-    print('---OUT: HIGH_LEVEL_OUTLINE_GRAPH--')
-
-    print(high_level_outline)
+    print('---MAIN STATE: THINK HIGH LEVEL OUTLINE GRAPH END---')
     return {
         "keys": {
-            'high_level_outline': high_level_outline["search_query_engine_plan"]
+            'high_level_outline': high_level_outline["search_query_engine_plan"],
+            'evaluation_criteria': high_level_outline["evaluation_criteria"],
         }
     }
 
 
-def composable_search_node(state):
-    print('---STATE: COMPOSABLE SEARCH NODE---')
+def composable_search_node(state: RAG_State):
+    print('---MAIN STATE: COMPOSABLE SEARCH NODE---')
     state_dict = state["keys"]
     generation_result = state_dict["high_level_outline"]
     original_question = state["original_query"]
@@ -159,37 +156,34 @@ def composable_search_node(state):
     document_description = generation_result.objective
     sections = generation_result.sections
 
-    full_document_draft_display = setup_new_document_format(
-        document_title=document_title,
-        document_description=document_description,
-        original_question=original_question
-    )
+    full_document_without_conclusion = setup_new_document_format(document_title=document_title, document_description=document_description, original_question=original_question)
 
-
-    print('--- PM AGENT START ---')
-    # In order to avoid hit rate limit, we need to cut two at a time and run them in .batch func
+    last_conclusion_section = sections[-1]
 
     search_graph_batch_results = []
-    for section in sections:
-        search_graph_result = project_manager_graph.invoke({"input": section.as_str(), "search_result": "", "order": section.order}, {'recursion_limit': 100})
-        search_graph_batch_results.append(search_graph_result)
-    print('--- PM AGENT DONE ---')
-    print(search_graph_batch_results)
 
-    # We perform agent parallel, so we need reordering document's each sections.
+    def prepare_batch_input_data(_sections) -> list:
+        return [{'input': _section.as_str(), 'search_result': "", 'order': _section.order} for _section in _sections]
+
+
+    search_graph_batch_input = prepare_batch_input_data(sections[:-1])
+    print('---AGENT BATCH START---')
+    # (test)Now we are going use batch
+    _search_graph_batch_results = project_manager_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
+    search_graph_batch_results.extend(_search_graph_batch_results)
+    print('---AGENT BATCH END---')
+
     ordered_results = {search_graph_result['order']: search_graph_result for search_graph_result in search_graph_batch_results}
 
-    # AgentTeam을 활용하는 시점에서는 PM에이전트의 응답에 문서를 반환하는 것이 아닌
-    # PM에이전트가 응답(AgentFinish)를 한다는 것은 문서 생성 에이전트가 문서를 잘 생성했다는 것이므로, 문서 생성 에이전트의 결과를 따로 반환합니다.
-    # 따라서 더이상 이 함수에서 결과를 처리해 줄 필요가 없습니다.
     for order in sorted(ordered_results.keys()):
         print(f'---ORDER: {order}---')
         search_graph_result = ordered_results[order]
         document = search_graph_result["final_section_document"]
+        full_document_without_conclusion += parse_result_to_document_format(document=document)
+    print('---GENERATE DOCUMENT DRAFT DONE---')
 
-        full_document_draft_display += parse_result_to_document_format(document=document)
-
-    print('---STATE: COMPOSABLE SEARCH NODE DONE---')
+    conclusion = conclusion_chain(previous_sections_info=full_document_without_conclusion, conclusion_section_info=last_conclusion_section.as_str())
+    full_document_draft_display = full_document_without_conclusion + '\n\n\n' + conclusion
 
     return {
         'document_title': document_title,
@@ -200,7 +194,7 @@ def composable_search_node(state):
     }
 
 
-def generate(state):
+def generate(state: RAG_State):
     print("---GENERATE---")
     # print(f"state: {state}")
     state_dict = state["keys"]
@@ -233,19 +227,15 @@ def generate(state):
         for query, document in documents.items():
             documents_for_prompt += document
 
-    # print(f"documents_for_prompt: {documents_for_prompt}")
-
-
     llm = get_anthropic_model(model_name="haiku")
     rag_chain = (generate_prompt.partial(additional_restrictions="9. ALWAYS USE 'PAR_Final_RespondSchema' Tool, so the user know your high-level-outline!\n10. Take a careful at the schema of the tool, and use the tool.")
                  | llm.with_structured_output(PAR_Final_RespondSchema))
-
-
 
     generation = rag_chain.invoke({
         "question": question,
         "documents": documents_for_prompt
     })
+
     return {
         "keys": {
             "generation": generation,

@@ -21,26 +21,29 @@ class AgentState(TypedDict):
 arXiv_search_tool = Custom_arXivSearchTool()
 
 
-def run_agent(data):
-    print(">>>> ARXIV AGENT RUN <<<<")
+def run_agent(data: AgentState):
+    print('---ARXIV AGENT GRAPH RUN---')
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
-    agent = create_agent(llm=get_anthropic_model(), tools=[arXiv_search_tool], agent_specific_role="ArXiv")
+    agent = create_agent(llm=get_anthropic_model(model_name="sonnet"), tools=[arXiv_search_tool], agent_specific_role="ArXiv")
     return agent_outcome_checker(agent=agent, input=input, intermediate_steps=intermediate_steps)
 
 
-def router(data):
-    print('>>>> ARXIV AGENT ROUTER <<<<')
+def router(data: AgentState):
+    print('---ARXIV AGENT GRAPH ROUTER---')
     if isinstance(data['agent_outcome'], AgentFinish):
         return 'end'
     else:
         return 'arxiv'
 
 
-def arXiv_node(data):
-    print('>>>> ARXIV AGENT SEARCH <<<<')
+def arXiv_node(data: AgentState):
+    print('---ARXIV AGENT GRAPH ARXIV API---')
     agent_action = data['agent_outcome']
-    result = arxiv_search_v2(query=agent_action.tool_input['query'])
+    result = arxiv_search_v2(
+        query=agent_action.tool_input['query'],
+        max_results=agent_action.tool_input['max_results']
+    )
     return {
         'intermediate_steps': [(agent_action, result)]
     }

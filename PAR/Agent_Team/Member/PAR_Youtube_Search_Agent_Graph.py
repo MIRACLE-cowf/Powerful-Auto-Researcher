@@ -21,23 +21,24 @@ class AgentState(TypedDict):
 youtube_search_tool = Custom_YouTubeSearchTool()
 
 
-def run_agent(data):
-    print(">>>> YOUTUBE AGENT RUN <<<<")
+def run_agent(data: AgentState):
+    print('---YOUTUBE AGENT GRAPH RUN---')
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
     agent = create_agent(llm=get_anthropic_model(), tools=[youtube_search_tool], agent_specific_role="Youtube")
     return agent_outcome_checker(agent=agent, input=input, intermediate_steps=intermediate_steps)
 
-def router(data):
-    print('>>>> YOUTUBE AGENT ROUTER <<<<')
+
+def router(data: AgentState):
+    print('---YOUTUBE AGENT GRAPH ROUTER---')
     if isinstance(data['agent_outcome'], AgentFinish):
         return 'end'
     else:
         return 'youtube'
 
 
-def youtube_node(data):
-    print('>>>> YOUTUBE AGENT SEARCH <<<<')
+def youtube_node(data: AgentState):
+    print('---YOUTUBE AGENT GRAPH YOUTUBE API---')
     agent_action = data['agent_outcome']
     result = youtube_search_v2(query=agent_action.tool_input['query'])
     return {

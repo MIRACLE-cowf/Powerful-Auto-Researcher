@@ -1,16 +1,21 @@
 import json
 from typing import Optional, Type
 
-from langchain_core.callbacks import CallbackManagerForToolRun
-from langchain_core.tools import BaseTool
-from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
+from langchain_core.callbacks import CallbackManagerForToolRun
+from langchain_core.pydantic_v1 import BaseModel, Field
+from langchain_core.tools import BaseTool
 
 
 class SearchInput(BaseModel):
-    """Input for the Tavily tool."""
-
+    """Input for the general search tool."""
     query: str = Field(description="search query to look up")
+
+
+class ArXivSearchInput(BaseModel):
+    """Input for the arXiv tool."""
+    query: str = Field(description="The search query to look up using the ArXiv Search API.")
+    max_results: int = Field(default=2, ge=1, le=3, description="The maximum number of search results to return. Must be between 2 and 6. Default value is 3")
 
 
 class Custom_WikipediaQueryRun(BaseTool):
@@ -18,10 +23,10 @@ class Custom_WikipediaQueryRun(BaseTool):
 
     name: str = "wikipedia"
     description: str = (
-        "A wrapper around Wikipedia. "
-        "Useful for when you need to answer general questions about "
-        "people, places, companies, facts, historical events, or other subjects. "
-        "Input should be a search query."
+        "A tool for searching Wikipedia articles and getting summarized information. "
+        "It finds the top 3 most relevant Wikipedia pages based on the provided search query and returns the title and a summary of the full content for each page. "
+        "This is useful when you need to quickly gather general information about a topic from a reliable source. "
+        "The input should be a well-formed search query, in addition to the search query, you can also specify the maximum number of results to retrieve, allowing for dynamic control over the amount of information returned."
     )
     api_wrapper: WikipediaAPIWrapper
     args_schema: Type[BaseModel] = SearchInput
@@ -40,8 +45,10 @@ class Custom_YouTubeSearchTool(BaseTool):
 
     name: str = "youtube_search"
     description: str = (
-        "search for youtube videos associated with a query."
-        "Input should be a search query."
+        "A tool for searching YouTube videos and getting summarized information about their content. "
+        "It finds relevant videos based on the provided search query, retrieves the transcript (if available) for each video, and uses an LLM to generate a concise summary of the video's content. "
+        "This is useful when you need to quickly gather information from video sources without watching them in full. "
+        "The input should be a well-formed search query, in addition to the search query, you can also specify the maximum number of results to retrieve, allowing for dynamic control over the amount of information returned."
     )
 
     args_schema: Type[BaseModel] = SearchInput
@@ -74,11 +81,13 @@ class Custom_YouTubeSearchTool(BaseTool):
 class Custom_arXivSearchTool(BaseTool):
     name: str = "arXiv_search"
     description: str = (
-        "search for arXiv papers associated with a query."
-        "Input should be a search query."
+        "A tool for searching scientific papers on arXiv. "
+        "It finds relevant papers based on the provided search query, downloads the full text of each paper, and uses an LLM to extract and summarize the key points. "
+        "This is useful when you need to gather technical information and insights from scientific literature. "
+        "The input should be a well-formed search query, in addition to the search query, you can also specify the maximum number of results to retrieve, allowing for dynamic control over the amount of information returned."
     )
 
-    args_schema: Type[BaseModel] = SearchInput
+    args_schema: Type[BaseModel] = ArXivSearchInput
 
     def _search(self) -> str:
         return "test"

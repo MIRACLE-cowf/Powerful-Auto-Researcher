@@ -22,24 +22,24 @@ class AgentState(TypedDict):
 wikipedia = Custom_WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 
 
-def run_agent(data):
-    print(">>>> WIKIPEDIA AGENT RUN <<<<")
+def run_agent(data: AgentState):
+    print('---WIKIPEDIA AGENT GRAPH RUN---')
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
     agent = create_agent(llm=get_anthropic_model(), tools=[wikipedia], agent_specific_role="Wikipedia")
     return agent_outcome_checker(agent=agent, input=input, intermediate_steps=intermediate_steps)
 
 
-def router(data):
-    print('>>>> WIKIPEDIA AGENT ROUTER <<<<')
+def router(data: AgentState):
+    print('---WIKIPEDIA AGENT GRAPH ROUTER---')
     if isinstance(data['agent_outcome'], AgentFinish):
         return 'end'
     else:
         return 'wikipedia'
 
 
-def wikipedia_node(data):
-    print('>>>> WIKIPEDIA AGENT SEARCH <<<<')
+def wikipedia_node(data: AgentState):
+    print('---WIKIPEDIA AGENT GRAPH WIKIPEDIA API---')
     agent_action = data['agent_outcome']
     result = wikipedia_search(query=agent_action.tool_input['query'])
     return {

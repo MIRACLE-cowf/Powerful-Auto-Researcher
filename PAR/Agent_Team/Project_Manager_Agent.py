@@ -1,7 +1,6 @@
 import operator
 from typing import Literal, TypedDict, Annotated, Union
 
-from langchain_anthropic.output_parsers import ToolsOutputParser
 from langchain_core.agents import AgentAction, AgentFinish
 from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -133,25 +132,6 @@ As the Project Manager Agent, strive to coordinate your team members effectively
 ])
 
 PM_llm = get_anthropic_model(model_name="sonnet")
-PM_output_parser = ToolsOutputParser()
-
-
-def extract_output(output):
-    agent_output = output
-    if isinstance(agent_output, list) and len(agent_output) > 0:
-        return {
-            "agent_output": agent_output[0],
-            "next": agent_output[0].tool_input["next"],
-            "instructions": agent_output[0].tool_input["instructions"],
-        }
-    elif isinstance(agent_output, AgentFinish):
-        return {
-            "agent_output": agent_output,
-            "next": "FINISH",
-        }
-    else:
-        raise ValueError(f"Unexpected agent output: {agent_output}, type: {type(agent_output)}")
-
 
 PM_chain = (
         {
@@ -179,7 +159,7 @@ def transform_search_result(search_engine: str, search_result: str) -> str:
     return f"<{search_engine}_search_result>\n\n{search_result}\n\n</{search_engine}_search_result>"
 
 
-def run_pm_agent(state):
+def run_pm_agent(state: AgentState) -> dict:
     print("### PM AGENT RUN ###")
     pm_result = PM_chain.invoke({"input": state["input"], "intermediate_steps": state["intermediate_steps"]})
 
@@ -199,8 +179,8 @@ def run_pm_agent(state):
         raise ValueError(f"Unexpected agent output: {pm_result}, type: {type(pm_result)}")
 
 
-def tavily_agent_node(state):
-    print("### PM CALLED TAVILY AGENT ###")
+def tavily_agent_node(state: AgentState) -> dict:
+    print(f"---{state['order']} PM AGENT CALLED TAVILY AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     tavily_agent_result = PAR_Team_Member_Agent_Tavily.invoke({"input": messages.content})
     extract_tavily_agent_result = extract_result(tavily_agent_result["agent_outcome"].return_values["output"])
@@ -211,8 +191,8 @@ def tavily_agent_node(state):
     }
 
 
-def wikipedia_agent_node(state):
-    print("### PM CALLED WIKIPEDIA AGENT ###")
+def wikipedia_agent_node(state: AgentState) -> dict:
+    print(f"---{state['order']} PM AGENT CALLED WIKIPEDIA AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     wikipedia_agent_result = PAR_Team_Member_Agent_Wikipedia.invoke({"input": messages.content})
     extract_wikipedia_agent_result = extract_result(wikipedia_agent_result["agent_outcome"].return_values["output"])
@@ -224,8 +204,8 @@ def wikipedia_agent_node(state):
     }
 
 
-def youtube_agent_node(state):
-    print("### PM CALLED YOUTUBE AGENT ###")
+def youtube_agent_node(state: AgentState) -> dict:
+    print(f"---{state['order']} PM AGENT CALLED YOUTUBE AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     youtube_agent_result = PAR_Team_Member_Agent_Youtube.invoke({"input": messages.content})
     extract_youtube_agent_result = extract_result(youtube_agent_result["agent_outcome"].return_values["output"])
@@ -236,8 +216,8 @@ def youtube_agent_node(state):
     }
 
 
-def arXiv_agent_node(state):
-    print("### PM CALLED ARXIV AGENT ###")
+def arXiv_agent_node(state: AgentState) -> dict:
+    print(f"---{state['order']} PM AGENT CALLED ARXIV AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     arxiv_agent_result = PAR_Team_Member_Agent_ArXiv.invoke({"input": messages.content})
     extract_arxiv_agent_result = extract_result(arxiv_agent_result["agent_outcome"].return_values["output"])
@@ -248,8 +228,8 @@ def arXiv_agent_node(state):
     }
 
 
-def document_agent_node(state):
-    print("### PM CALLED DOCUMENT AGENT ###")
+def document_agent_node(state: AgentState) -> dict:
+    print(f"---{state['order']} PM AGENT CALLED DOCUMENT GENERATOR AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     document_agent_result = Document_Writer_chain.invoke(
         {"input": messages.content, "search_result": state["search_result"]})
@@ -259,8 +239,8 @@ def document_agent_node(state):
     }
 
 
-def response_node(state):
-    print("### PM THOUGHT THE DOCUMENT WAS GOOD ###")
+def response_node(state: AgentState) -> dict:
+    print(f"### {state['order']} PM AGENT DONE ALL WORK ###")
     return {
         "agent_output": state["agent_output"],
         "final_section_document": state["final_section_document"],

@@ -6,6 +6,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from CustomHelper.Custom_Error_Handler import PAR_SUCCESS, PAR_ERROR
+from CustomHelper.Helper import retry_with_delay
 from CustomHelper.load_model import get_anthropic_model
 from Tool.Custom_TavilySearchResults import Custom_TavilySearchResults, Custom_TavilySearchAPIWrapper
 
@@ -85,7 +86,7 @@ chain = (
             "search_result": lambda x: x["search_result"]
         }
         | prompt
-        | llm
+        | (lambda x: retry_with_delay(lambda : llm, max_retries=5, delay_seconds=20.0))
         | StrOutputParser()
 )
 
@@ -108,7 +109,7 @@ def web_search_v2(
         # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
     )
 
-    tavily_search_tool_with_fallbacks = tavily_search_tool.with_fallbacks([tavily_search_tool] * 5)
+    tavily_search_tool_with_fallbacks = tavily_search_tool.with_fallbacks([tavily_search_tool] * 8)
 
     try:
         search_results = tavily_search_tool_with_fallbacks.invoke({"query": query})
@@ -198,11 +199,12 @@ def youtube_search_v2(
 
 
 def arxiv_search_v2(
-        query: str
+    query: str,
+    max_results: int
 ) -> Union[PAR_SUCCESS, PAR_ERROR]:
     arxiv_results = ""
     try:
-        docs = ArxivLoader(query=query, load_max_docs=3, load_all_available_meta=True).load()
+        docs = ArxivLoader(query=query, load_max_docs=max_results, load_all_available_meta=True).load()
     except Exception as e:
         error_message = str(e)
         print(f"---ARXIV SEARCH ERROR: {error_message}---")
