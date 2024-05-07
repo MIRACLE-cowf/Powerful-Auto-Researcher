@@ -8,6 +8,9 @@ However, I believe it to be quite an intriguing idea, and I wish to receive ampl
 
 Thank you for coming by, and please keep an eye out for future updates!
 
+## 😉 Help Me & Discuss Me 😉
+If you would like to see the results of the document generation, please leave a comment in the designated issue. I will be happy to provide you with the generated documents for your review.
+
 ## 🌠 OverView 🌠
 This project aims to build a more powerful RAG system powered by [LangChain](https://github.com/langchain-ai/langchain), [LangGraph](https://github.com/langchain-ai/langgraph), and [Anthropic](https://www.anthropic.com/).  
 While the project is still in its early experimental stages and there are many steps that I ahead, it is an endeavor that I would like to share with the brilliant developers on GitHub, discussing exciting ideas and possibilities!
