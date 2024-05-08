@@ -1,7 +1,8 @@
 import time
-from typing import List, Callable, Any
+from typing import List, Any
 
 from langchain_core.documents import Document
+from langchain_core.runnables import Runnable
 
 
 def generate_doc_result(docs: List[Document]):
@@ -55,14 +56,14 @@ def generate_final_doc_results(documents, index):
     return yes_doc_results
 
 
-def retry_with_delay(func: Callable, max_retries: int = 10, delay_seconds: float = 10.0) -> Any:
+def retry_with_delay(llm: Runnable, max_retries: int = 10, delay_seconds: float = 10.0) -> Any:
     for attempt in range(max_retries):
         try:
-            return func()
+            print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Attempt {attempt + 1} of {max_retries}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            return llm
         except Exception as e:
-            print(f"LLM Retry with delay {delay_seconds} failed due to {str(e)}")
             if attempt < max_retries - 1:
-                print(f"Attempt {attempt + 1} failed with error: {str(e)}. Retrying in {delay_seconds} seconds...")
+                print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Attempt {attempt + 1} failed with error: {str(e)}. Retrying in {delay_seconds} seconds...!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 time.sleep(delay_seconds)
             else:
                 raise e

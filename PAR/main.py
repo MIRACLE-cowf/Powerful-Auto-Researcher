@@ -1,3 +1,4 @@
+import re
 from typing import TypedDict, Dict
 
 from langchain import hub
@@ -14,7 +15,7 @@ from Single_Chain.GradingDocumentsChain import grading_documents_chain
 from Single_Chain.MultiQueryChain import multi_query_chain, DerivedQueries
 from Single_Chain.Retrieve_Vector_DB import search_vector_store
 from Util.PAR_Helper import setup_new_document_format, parse_result_to_document_format, \
-	save_document_to_md
+    save_document_to_md
 from Util.Retriever_setup import parent_retriever
 from Util.console_controller import clear_console, print_warning_message, print_see_you_again
 
@@ -178,7 +179,17 @@ def composable_search_node(state: RAG_State):
     for order in sorted(ordered_results.keys()):
         print(f'---ORDER: {order}---')
         search_graph_result = ordered_results[order]
-        document = search_graph_result["final_section_document"]
+
+        if search_graph_result["final_section_document"]:
+            document = search_graph_result["final_section_document"]
+        else:
+            output = search_graph_result["agent_output"].return_values["output"]
+            result_match = re.search(r"<result>(.*?)</result>", output, re.DOTALL)
+            if result_match:
+                document = result_match.group(1).strip()
+            else:
+                document = output
+        # document = search_graph_result["final_section_document"]
         full_document_without_conclusion += parse_result_to_document_format(document=document)
     print('---GENERATE DOCUMENT DRAFT DONE---')
 
@@ -242,6 +253,7 @@ def generate(state: RAG_State):
             "full_documents": documents_for_prompt
         }
     }
+
 
 workflow = StateGraph(RAG_State)
 # add node

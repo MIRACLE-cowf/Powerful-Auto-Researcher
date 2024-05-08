@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph, END
 from Agent_Team.create_agent import create_agent
 from CustomHelper.Agent_outcome_checker import agent_outcome_checker
 from CustomHelper.load_model import get_anthropic_model
-from Tool.CustomSearchFunc_v2 import web_search_v2
+from Tool.CustomTavilySearchFunc import tavily_search_func
 from Tool.Custom_TavilySearchResults import Custom_TavilySearchResults
 
 
@@ -40,7 +40,7 @@ def router(data: AgentState):
 def tavily_node(data: AgentState):
     print('---TAVILY AGENT GRAPH TAVIL API---')
     agent_action = data['agent_outcome']
-    result = web_search_v2(
+    result = tavily_search_func(
         query=agent_action.tool_input['query'],
         max_results=agent_action.tool_input['max_results']
     )

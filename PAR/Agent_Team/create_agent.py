@@ -3,6 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from CustomHelper.Anthropic_helper import format_to_anthropic_tool_messages
 from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_beta
+from CustomHelper.Helper import retry_with_delay
 
 
 def select_prompt_template(agent_specific_role: str) -> dict:
@@ -72,7 +73,7 @@ Key Points:
 - [Key point 2]
 - [Key point 3]
 ...
-Content: [Organized detailed content of the search result without summarization]
+Content: [PASTE the relevant content from the search result here without summarization. Include code snippets, explanations, and other important details as they appear in the original source. Do not use placeholders like square brackets.]
 
 Search Result 2:
 Source: [Title or description of the source]
@@ -83,7 +84,7 @@ Key Points:
 - [Key point 2]
 - [Key point 3]
 ...
-Content: [Organized detailed content of the search result without summarization]
+Content: [PASTE the relevant content from the search result here without summarization. Include code snippets, explanations, and other important details as they appear in the original source. Do not use placeholders like square brackets.]
 
 ...
 
@@ -102,6 +103,9 @@ Query Tip: {search_query_tip}
 3. Maintain clear and concise communication with the Manager Agent.
 - Clearly convey the search results and analysis when delivering them.
 - Actively request additional guidance or feedback from the Manager Agent when needed.
+4. Always include the actual content from the search results without any summarization and deliver them to the Manager Agent.
+- Paste the relevant text, code snippets, explanations, and other important details as they appear in the original source.
+- Do not use placeholders like square brackets or omit the content, as this can hinder effective collaboration with other agents.
 </result>
 </example_final_response_format>
 
@@ -111,13 +115,14 @@ As a {search_engine} search specialized agent, please provide the best search re
         MessagesPlaceholder(variable_name="agent_scratchpad")
     ])
     search_template = select_prompt_template(agent_specific_role=agent_specific_role)
+    run_llm = llm.bind_tools(tools=tools).with_fallbacks([llm.bind_tools(tools=tools)] * 5)
     agent_chain = (
         {
             "input": lambda x: x["input"],
             "agent_scratchpad": lambda x: format_to_anthropic_tool_messages(x["intermediate_steps"])
         }
         | prompt.partial(search_engine=search_template["search_engine"], search_engine_description=search_template["search_engine_description"], search_query_tip=search_template["search_query_tip"])
-        | llm.bind_tools(tools=tools)
+        | retry_with_delay(llm=run_llm, max_retries=7, delay_seconds=45)
         | AnthropicAgentOutputParser_beta()
     )
     return agent_chain
