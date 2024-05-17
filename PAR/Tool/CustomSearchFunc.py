@@ -1,20 +1,18 @@
 import json
-import arxiv
+from typing import Optional
+
+from langchain import hub
 from langchain.retrievers import ParentDocumentRetriever
 from langchain_community.document_loaders.arxiv import ArxivLoader
 from langchain_community.document_loaders.youtube import YoutubeLoader
-from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.stores import BaseStore
 
 from CustomHelper.ArxivPaperRelevance_Schema import ArxivPaperRelevance
 from CustomHelper.load_model import get_anthropic_model
 from Tool.Custom_TavilySearchResults import Custom_TavilySearchResults, Custom_TavilySearchAPIWrapper
-from langchain import hub
-
 
 extractor_prompt= hub.pull("miracle/par_webpage_extractor")
 youtube_extractor_prompt=hub.pull("miracle/par_youtube_extractor")
@@ -81,7 +79,6 @@ def youtube_search(
     print("---SEARCHING IN YOUTUBE---")
     results = YoutubeSearch(query, max_results=3).to_json()
     data = json.loads(results)
-
 
     def process_video(index, video):
         try:
@@ -184,11 +181,16 @@ def arXiv_search(
 #     return arxiv_results
 
 
-def wikipedia_search(query: str) -> str:
+async def wikipedia_search(
+    query: str,
+    max_results: Optional[int] = None,
+) -> str:
     print("---SEARCHING IN WIKIPEDIA---")
     wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
-    results = wikipedia.run(query)
-    print(f"---WIKIPEDIA SEARCH RESULT---\n{results}")
+    results = await wikipedia.ainvoke({'query': query})
+    # wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+    # results = wikipedia.run(query)
+    # print(f"---WIKIPEDIA SEARCH RESULT---\n{results}")
 
     print("---WIKIPEDIA SEARCH DONE---")
     return results

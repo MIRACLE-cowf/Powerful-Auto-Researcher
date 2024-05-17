@@ -1,8 +1,13 @@
+import asyncio
 import time
-from typing import List, Any
+from typing import List, Any, Union
 
+from anthropic import BadRequestError
 from langchain_core.documents import Document
-from langchain_core.runnables import Runnable
+from langchain_core.runnables import Runnable, RunnableSerializable
+
+from CustomHelper.Custom_Error_Handler import PAR_ERROR
+from CustomHelper.load_model import get_anthropic_model
 
 
 def generate_doc_result(docs: List[Document]):
@@ -60,6 +65,7 @@ def retry_with_delay(llm: Runnable, max_retries: int = 10, delay_seconds: float 
     for attempt in range(max_retries):
         try:
             print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Attempt {attempt + 1} of {max_retries}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print(llm)
             return llm
         except Exception as e:
             if attempt < max_retries - 1:
@@ -67,3 +73,38 @@ def retry_with_delay(llm: Runnable, max_retries: int = 10, delay_seconds: float 
                 time.sleep(delay_seconds)
             else:
                 raise e
+
+
+async def retry_with_delay_async(
+    chain: RunnableSerializable,
+    input: Union[dict | list],
+    max_retries: int = 5,
+    delay_seconds: float = 30.0,
+    is_batch: bool = False,
+) -> Any:
+    fallback_llm = get_anthropic_model(model_name="opus")
+    for attempt in range(max_retries):
+        try:
+            if is_batch is True:
+                return await chain.abatch(inputs=input)
+            else:
+                return await chain.ainvoke(input=input)
+
+        except BadRequestError as e:
+            error_message = str(e)
+            if 'Output blocked by content filtering policy' in error_message:
+                print("Output blocked by content filtering policy. Skipping retry.")
+                raise PAR_ERROR(error_message)
+            else:
+                if attempt < max_retries - 1:
+                    print(f"Bad request error: {error_message}. Retrying in {delay_seconds} seconds...")
+                    await asyncio.sleep(delay_seconds)
+                else:
+                    raise PAR_ERROR(error_message)
+        except Exception as e:
+            error_message = str(e)
+            if attempt < max_retries - 1:
+                print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Attempt {attempt + 1} failed with error: {str(e)}. Retrying in {delay_seconds} seconds...!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                await asyncio.sleep(delay_seconds)
+            else:
+                raise PAR_ERROR(error_message)

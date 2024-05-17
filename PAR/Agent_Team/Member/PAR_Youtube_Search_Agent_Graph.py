@@ -1,5 +1,5 @@
 import operator
-from typing import TypedDict, Union, Annotated, Dict
+from typing import TypedDict, Union, Annotated, Dict, Any
 
 from langchain_core.agents import AgentAction, AgentFinish
 from langgraph.graph import StateGraph, END
@@ -14,7 +14,7 @@ from Tool.CustomSearchTool import Custom_YouTubeSearchTool
 class AgentState(TypedDict):
     agent_outcome: Union[AgentAction, AgentFinish, None]
     intermediate_steps: Annotated[list[tuple[AgentAction, str]], operator.add]
-    keys: Dict[str, any]
+    keys: Dict[str, Any]
     input: str
 
 
@@ -46,17 +46,24 @@ def youtube_node(data: AgentState):
     }
 
 
-workflow = StateGraph(AgentState)
-workflow.add_node("agent", run_agent)
-workflow.add_node("youtube", youtube_node)
-workflow.add_conditional_edges(
-    "agent",
-    router,
-    {
-        "end": END,
-        "youtube": "youtube"
-    }
-)
-workflow.add_edge("youtube", "agent")
-workflow.set_entry_point("agent")
-PAR_Team_Member_Agent_Youtube = workflow.compile().with_config(run_name="PAR_Team_Member_Agent_Youtube")
+def get_youtube_search_agent_graph():
+    workflow = StateGraph(AgentState)
+    workflow.add_node("agent", run_agent)
+    workflow.add_node("youtube", youtube_node)
+    workflow.add_conditional_edges(
+        "agent",
+        router,
+        {
+            "end"    : END,
+            "youtube": "youtube"
+        }
+    )
+    workflow.add_edge("youtube", "agent")
+    workflow.set_entry_point("agent")
+    PAR_Team_Member_Agent_Youtube = workflow.compile().with_config(run_name="PAR_Team_Member_Agent_Youtube")
+    return PAR_Team_Member_Agent_Youtube
+
+
+def get_youtube_search_agent_graph_mermaid():
+    app = get_youtube_search_agent_graph()
+    print(app.get_graph().draw_mermaid())

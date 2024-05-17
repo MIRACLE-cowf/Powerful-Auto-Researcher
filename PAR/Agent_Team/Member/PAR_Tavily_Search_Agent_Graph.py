@@ -1,5 +1,5 @@
 import operator
-from typing import TypedDict, Union, Annotated, Dict
+from typing import TypedDict, Union, Annotated, Dict, Any
 
 from langchain_core.agents import AgentAction, AgentFinish
 from langgraph.graph import StateGraph, END
@@ -14,7 +14,7 @@ from Tool.Custom_TavilySearchResults import Custom_TavilySearchResults
 class AgentState(TypedDict):
     agent_outcome: Union[AgentAction, AgentFinish, None]
     intermediate_steps: Annotated[list[tuple[AgentAction, str]], operator.add]
-    keys: Dict[str, any]
+    keys: Dict[str, Any]
     input: str
 
 
@@ -49,17 +49,25 @@ def tavily_node(data: AgentState):
     }
 
 
-workflow = StateGraph(AgentState)
-workflow.add_node("agent", run_agent)
-workflow.add_node("tavily", tavily_node)
-workflow.add_conditional_edges(
-    "agent",
-    router,
-    {
-        "end": END,
-        "tavily": "tavily"
-    }
-)
-workflow.add_edge("tavily", "agent")
-workflow.set_entry_point("agent")
-PAR_Team_Member_Agent_Tavily = workflow.compile().with_config(run_name="PAR_Team_Member_Agent_Tavily")
+def get_tavily_search_agent_graph():
+    workflow = StateGraph(AgentState)
+    workflow.add_node("agent", run_agent)
+    workflow.add_node("tavily", tavily_node)
+    workflow.add_conditional_edges(
+        "agent",
+        router,
+        {
+            "end"   : END,
+            "tavily": "tavily"
+        }
+    )
+    workflow.add_edge("tavily", "agent")
+    workflow.set_entry_point("agent")
+    PAR_Team_Member_Agent_Tavily = workflow.compile().with_config(run_name="PAR_Team_Member_Agent_Tavily")
+    return PAR_Team_Member_Agent_Tavily
+
+
+def get_tavily_search_agent_graph_mermaid():
+    app = get_tavily_search_agent_graph()
+    print(app.get_graph().draw_mermaid())
+

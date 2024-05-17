@@ -3,7 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from CustomHelper.Anthropic_helper import format_to_anthropic_tool_messages
 from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_beta
-from CustomHelper.Helper import retry_with_delay
+from CustomHelper.load_model import get_anthropic_model
 
 
 def select_prompt_template(agent_specific_role: str) -> dict:
@@ -25,6 +25,13 @@ def select_prompt_template(agent_specific_role: str) -> dict:
                                       "phrase, you can quickly find relevant scholarly articles, research papers, and scientific publications hosted on arXiv. This tool is particularly useful for "
                                       "researchers, students, and anyone seeking to access and explore the latest findings and ideas across various scientific disciplines.")
         search_query_tip = "To identify and collect information on scientific fields or the latest research, 'search terms' consisting of core 'keywords' directly related to the topic are good."
+    elif agent_specific_role.lower() == 'brave':
+        search_engine = "BraveSearch"
+        search_engine_description = ("Use Brave Search when you need a broad and comprehensive search across a wide range of websites and domains. It is particularly effective for finding the most up-to-date information on current events, trending topics, and rapidly evolving fields. "
+                                     "Brave Search crawls and indexes billions of webpages to provide extensive coverage. While it may not always have the same depth as Tavily for academic or highly specialized topics, its strengths lie in its vast reach and ability to surface relevant content from a huge variety of sources. "
+                                     "This makes it ideal for queries where a diversity of perspectives and the most current information is desired. Brave Search is also a strong choice when you want a balance of both reliable, high-quality sources and more informal user-generated content like blog posts, social media, forums etc. It provides a well-rounded view. "
+                                     "In addition to webpages, Brave Search is effective at finding relevant images, videos, news articles, and other media related to the search. It's useful for things like comprehensive overviews of topics, research on current affairs and pop culture, comparison of different products/services, discovering a range of opinions on issues, and finding real-world examples or applications of concepts.")
+        search_query_tip = "For the most relevant results on Brave Search, use specific but concise keyphrases that capture the core elements of your query. Including 1-2 of the most essential keywords is usually sufficient."
     else:
         raise ValueError(f"Unrecognized agent specifier '{agent_specific_role}'")
     return {
@@ -35,9 +42,16 @@ def select_prompt_template(agent_specific_role: str) -> dict:
 
 
 def create_agent(llm: ChatAnthropic, tools: list, agent_specific_role: str):
+    fallback_llm = get_anthropic_model(model_name="opus")
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a seasoned researcher agent with extensive experience in utilizing the {search_engine} API for data collection and analysis.
 Currently, you are a team member of the PAR project, working on writing a specific section of an entire markdown document. The project also involves other team members specialized in different search engines.
+
+<search_engine_info>
+Search Engine: {search_engine}
+Description: {search_engine_description}
+Query Tip: {search_query_tip}
+</search_engine_info>
 
 Your role is to diligently follow the instruction provided by the Project Manager, effectively coordinate and collaborate with them, and conduct thorough research to contribute to the creation of a perfect section of the document.
 
@@ -61,9 +75,9 @@ Your role is to diligently follow the instruction provided by the Project Manage
 </instructions>
 
 <example_final_response_format>
-<result>
-When delivering the search results to the Manager Agent, please use the following format:
 
+When delivering the search results to the Manager Agent, please use the following format:
+<result>
 Search Result 1:
 Source: [Title or description of the source]
 URL: [URL of the search result]
@@ -96,8 +110,6 @@ Overall insights:
 
 <restrictions>
 1. Understand and fully utilize the characteristics and strengths of the {search_engine} search engine and search query tip.
-Description: {search_engine_description}
-Query Tip: {search_query_tip}
 2. Use the allocated time and resources for searching and information organization efficiently.
 - Optimize your search strategy to avoid unnecessary searches or duplicate work and focus on key information.
 3. Maintain clear and concise communication with the Manager Agent.
@@ -106,23 +118,23 @@ Query Tip: {search_query_tip}
 4. Always include the actual content from the search results without any summarization and deliver them to the Manager Agent.
 - Paste the relevant text, code snippets, explanations, and other important details as they appear in the original source.
 - Do not use placeholders like square brackets or omit the content, as this can hinder effective collaboration with other agents.
-</result>
-</example_final_response_format>
+</restrictions>
 
 
-As a {search_engine} search specialized agent, please provide the best search results with relevant URLs and effectively collaborate with the Manager Agent based on the above guidelines and considerations to contribute to the success of the project."""),
+As a {search_engine} search specialized agent, please provide the best search results with relevant URLs and effectively collaborate with the Manager Agent based on the above guidelines and considerations to contribute to the success of the project.
+"""),
         ("human", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad")
     ])
     search_template = select_prompt_template(agent_specific_role=agent_specific_role)
-    run_llm = llm.bind_tools(tools=tools).with_fallbacks([llm.bind_tools(tools=tools)] * 5)
+    run_llm = llm.bind_tools(tools=tools).with_fallbacks([fallback_llm.bind_tools(tools=tools)] * 5)
     agent_chain = (
         {
             "input": lambda x: x["input"],
             "agent_scratchpad": lambda x: format_to_anthropic_tool_messages(x["intermediate_steps"])
         }
         | prompt.partial(search_engine=search_template["search_engine"], search_engine_description=search_template["search_engine_description"], search_query_tip=search_template["search_query_tip"])
-        | retry_with_delay(llm=run_llm, max_retries=7, delay_seconds=45)
+        | run_llm
         | AnthropicAgentOutputParser_beta()
     )
     return agent_chain

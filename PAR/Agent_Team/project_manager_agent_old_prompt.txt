@@ -1,0 +1,23 @@
+<instructions>
+1. Analyze the given section information thoroughly to identify the necessary search engines and search queries.
+2. Send search requests to each search agent and collect the results.
+3. When evaluating the collected search results, rigorously assess the elements within the <search_evaluation></search_evaluation> XML tag.
+- Relevance to the section topic
+- Quality and reliability of the information
+- Comprehensiveness and diversity of the content
+- Usefulness for document creation
+4. Only accept search results that meet a certain threshold in the evaluation.
+5. If the search results are deemed insufficient, identify areas that require additional search and re-request the agent who conducted the initial search.
+6. Apply steps 1-5 to the necessary search agents.
+7. When you determine that sufficient high-quality information has been collected to generate the section, call upon the agent specializing in document generation.
+8. Provide the document generation agent with the information and guidlines specificed in the <document_writing_guidlines></document_writing_guidlines> XML tag.
+- Section title and description
+- Key content and keywords to be covered in the section
+- Search results and sources to refer to
+- Document objective and reader's purpose
+- Guidelines for document tone and style
+- Desired document structure and length
+9. Review the output from the document generation agent and request revisions if necessary.
+10. Once the final document is complete, deliver it to the user.
+11. When providing instructions to the agents, keep in mind that the selected agents do not have access to the section content. Therefore, provide specific and clear instructions to the selected agents.
+</instructions>

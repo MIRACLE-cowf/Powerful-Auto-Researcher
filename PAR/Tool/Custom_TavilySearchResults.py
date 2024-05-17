@@ -25,7 +25,7 @@ class Custom_TavilySearchResults(TavilySearchResults):
         "The input should be a well-formed search query, and the tool will return up to the specified maximum number of relevant results in JSON format. "
         "In addition to the search query, you can also specify the maximum number of results to retrieve, allowing for dynamic control over the amount of information returned."
     )
-    max_results: int = 3
+    max_results: int = 6
     args_schema: Type[BaseModel] = TavilyInput
 
 
@@ -59,7 +59,8 @@ class Custom_TavilySearchResults(TavilySearchResults):
                 query=query,
                 max_results=self.max_results,
                 include_answer=self.include_answer,
-                include_raw_content=self.include_raw_content
+                include_raw_content=self.include_raw_content,
+                include_images=self.include_image,
             )
         except Exception as e:
             print(f'TAVILY API occur error! {str(e)}')
@@ -105,6 +106,56 @@ class Custom_TavilySearchAPIWrapper(TavilySearchAPIWrapper):
                 raw_content: The raw content of the result.
         """  # noqa: E501
         raw_search_results = self.raw_results(
+            query,
+            max_results=max_results,
+            search_depth=search_depth,
+            include_domains=include_domains,
+            exclude_domains=exclude_domains,
+            include_answer=include_answer,
+            include_raw_content=include_raw_content,
+            include_images=include_images,
+        )
+        if include_answer:
+            return self.clean_results(raw_search_results["results"], raw_search_results.get("answer"), raw_search_results.get("follow_up_questions"), raw_search_results.get("images"))
+        else:
+            return self.clean_results(raw_search_results["results"])
+
+    async def results_async(
+        self,
+        query: str,
+        max_results: Optional[int] = 5,
+        search_depth: Optional[str] = "advanced",
+        include_domains: Optional[List[str]] = [],
+        exclude_domains: Optional[List[str]] = [],
+        include_answer: Optional[bool] = False,
+        include_raw_content: Optional[bool] = False,
+        include_images: Optional[bool] = False,
+    ) -> Dict:
+        """Run query through Tavily Search and return metadata.
+
+        Args:
+            query: The query to search for.
+            max_results: The maximum number of results to return.
+            search_depth: The depth of the search. Can be "basic" or "advanced".
+            include_domains: A list of domains to include in the search.
+            exclude_domains: A list of domains to exclude from the search.
+            include_answer: Whether to include the answer in the results.
+            include_raw_content: Whether to include the raw content in the results.
+            include_images: Whether to include images in the results.
+        Returns:
+            query: The query that was searched for.
+            follow_up_questions: A list of follow up questions.
+            response_time: The response time of the query.
+            answer: The answer to the query.
+            images: A list of images.
+            results: A list of dictionaries containing the results:
+                title: The title of the result.
+                url: The url of the result.
+                content: The content of the result.
+                score: The score of the result.
+                raw_content: The raw content of the result.
+        """  # noqa: E501
+        raw_search_results = await self.raw_results_async(
             query,
             max_results=max_results,
             search_depth=search_depth,

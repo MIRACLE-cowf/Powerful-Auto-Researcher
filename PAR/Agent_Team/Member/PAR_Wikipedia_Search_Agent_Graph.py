@@ -1,5 +1,5 @@
 import operator
-from typing import TypedDict, Union, Annotated, Dict
+from typing import TypedDict, Union, Annotated, Dict, Any
 
 from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_core.agents import AgentAction, AgentFinish
@@ -15,7 +15,7 @@ from Tool.CustomSearchTool import Custom_WikipediaQueryRun
 class AgentState(TypedDict):
     agent_outcome: Union[AgentAction, AgentFinish, None]
     intermediate_steps: Annotated[list[tuple[AgentAction, str]], operator.add]
-    keys: Dict[str, any]
+    keys: Dict[str, Any]
     input: str
 
 

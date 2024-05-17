@@ -1,23 +1,25 @@
+import asyncio
 import re
-from typing import TypedDict, Dict
+from typing import TypedDict, Dict, Any
 
 from langchain import hub
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_text_splitters import CharacterTextSplitter
 from langgraph.graph import StateGraph, END
 
-from Agent_Team.Project_Manager_Agent import project_manager_graph
-from CustomHelper.Helper import generate_doc_result, generate_final_doc_results
+from Agent_Team.Project_Manager_Agent import get_pm_graph
+from CustomHelper.Helper import generate_doc_result, generate_final_doc_results, retry_with_delay_async
 from CustomHelper.load_model import get_anthropic_model
-from Graph.THLO_Graph import THLO_Graph
+from Graph.THLO_Graph import get_THLO_Graph
 from Single_Chain.ConclustionChain import conclusion_chain
+from Single_Chain.GenerateNewPrompt import GenerateNewPromptFunc
 from Single_Chain.GradingDocumentsChain import grading_documents_chain
 from Single_Chain.MultiQueryChain import multi_query_chain, DerivedQueries
 from Single_Chain.Retrieve_Vector_DB import search_vector_store
 from Util.PAR_Helper import setup_new_document_format, parse_result_to_document_format, \
     save_document_to_md
 from Util.Retriever_setup import parent_retriever
-from Util.console_controller import clear_console, print_warning_message, print_see_you_again
+from Util.console_controller import print_warning_message, clear_console, print_see_you_again
 
 generate_prompt = hub.pull("miracle/par_generation_prompt")
 
@@ -34,17 +36,29 @@ class PAR_Final_RespondSchema(BaseModel):
 
 
 class RAG_State(TypedDict):
+    user_question: str
     original_query: str
     derived_queries: DerivedQueries
     document_title: str
     document_description: str
-    keys: Dict[str, any]
+    keys: Dict[str, Any]
 
 
-def multi_query_generator_node(state: RAG_State):
+async def generate_new_prompt_node(state: RAG_State):
+    print("---MAIN STATE: GENERATE NEW PROMPT IN---")
+    original_query = state["user_question"]
+    new_question_prompt = await GenerateNewPromptFunc(user_input=original_query)
+    print("---MAIN STATE: GENERATE NEW PROMPT OUT---")
+
+    return {
+        'original_query': new_question_prompt,
+    }
+
+
+async def multi_query_generator_node(state: RAG_State):
     print("---MAIN STATE: MULTI QUERY GENERATOR IN---")
     original_query = state["original_query"]
-    multi_query_result = multi_query_chain(model=get_anthropic_model()).invoke({"question": original_query})
+    multi_query_result = await multi_query_chain(model=get_anthropic_model()).ainvoke({"question": original_query})
     print("---MAIN STATE: MULTI QUERY GENERATOR OUT---")
 
     return {
@@ -52,10 +66,10 @@ def multi_query_generator_node(state: RAG_State):
     }
 
 
-def retrieve_node(state: RAG_State):
+async def retrieve_node(state: RAG_State):
     print("---MAIN STATE: RETRIEVE IN VECTOR DB---")
     multi_queries = state['derived_queries']
-    retrieve_result = search_vector_store(
+    retrieve_result = await search_vector_store(
         multi_query=multi_queries,
         retriever=parent_retriever
     )
@@ -68,7 +82,7 @@ def retrieve_node(state: RAG_State):
     }
 
 
-def grade_document(state: RAG_State):
+async def grade_document(state: RAG_State):
     print("---MAIN STATE: GRADING DOCUMENTS START---")
     state_dict = state["keys"]
     retrieve_result = state_dict['retrieve_result']
@@ -80,7 +94,7 @@ def grade_document(state: RAG_State):
     for new_query, documents in retrieve_result.items():
         doc_str = generate_doc_result(documents)
 
-        grade_result = grading_chain.invoke({
+        grade_result = await grading_chain.ainvoke({
             "question": new_query,
             "documents": doc_str
         })
@@ -125,7 +139,7 @@ def decide_to_generate(state: RAG_State):
         return "generate"
 
 
-def think_high_level_outline_node(state: RAG_State):
+async def think_high_level_outline_node(state: RAG_State):
     print('---MAIN STATE: THINK HIGH LEVEL OUTLINE GRAPH START---')
     state_dict = state["keys"]
     grading_results = state_dict["grading_results"]
@@ -134,7 +148,8 @@ def think_high_level_outline_node(state: RAG_State):
     for query, _ in grading_results.items():
         derived_queries += query + "\n"
 
-    high_level_outline = THLO_Graph.invoke({
+    THLO_Graph = get_THLO_Graph()
+    high_level_outline = await THLO_Graph.ainvoke({
         "original_question": original_query,
         'derived_queries': derived_queries
     })
@@ -147,7 +162,7 @@ def think_high_level_outline_node(state: RAG_State):
     }
 
 
-def composable_search_node(state: RAG_State):
+async def composable_search_node(state: RAG_State):
     print('---MAIN STATE: COMPOSABLE SEARCH NODE---')
     state_dict = state["keys"]
     generation_result = state_dict["high_level_outline"]
@@ -166,11 +181,11 @@ def composable_search_node(state: RAG_State):
     def prepare_batch_input_data(_sections) -> list:
         return [{'input': _section.as_str(), 'search_result': "", 'order': _section.order} for _section in _sections]
 
-
     search_graph_batch_input = prepare_batch_input_data(sections[:-1])
+    project_manager_graph = get_pm_graph()
     print('---AGENT BATCH START---')
     # (test)Now we are going use batch
-    _search_graph_batch_results = project_manager_graph.batch(search_graph_batch_input, {'recursion_limit': 100})
+    _search_graph_batch_results = await project_manager_graph.abatch(search_graph_batch_input, {'recursion_limit': 100})
     search_graph_batch_results.extend(_search_graph_batch_results)
     print('---AGENT BATCH END---')
 
@@ -193,7 +208,7 @@ def composable_search_node(state: RAG_State):
         full_document_without_conclusion += parse_result_to_document_format(document=document)
     print('---GENERATE DOCUMENT DRAFT DONE---')
 
-    conclusion = conclusion_chain(previous_sections_info=full_document_without_conclusion, conclusion_section_info=last_conclusion_section.as_str())
+    conclusion = await conclusion_chain(previous_sections_info=full_document_without_conclusion, conclusion_section_info=last_conclusion_section.as_str())
     full_document_draft_display = full_document_without_conclusion + '\n\n\n' + conclusion
 
     return {
@@ -205,7 +220,7 @@ def composable_search_node(state: RAG_State):
     }
 
 
-def generate(state: RAG_State):
+async def generate(state: RAG_State):
     print("---GENERATE---")
     # print(f"state: {state}")
     state_dict = state["keys"]
@@ -216,7 +231,10 @@ def generate(state: RAG_State):
 
     documents_for_prompt = ""
     if full_documents_display:
-        save_document_to_md(full_document=full_documents_display, document_title=document_title)
+        # No Need to wait for save
+        asyncio.ensure_future(save_document_to_md(full_document=full_documents_display, document_title=document_title))
+
+        # save_document_to_md(full_document=full_documents_display, document_title=document_title)
         documents_for_prompt = full_documents_display
         user_response = input('[y/n] Would you want to save this document in Vector Store?: ')
         if user_response == 'y':
@@ -238,14 +256,20 @@ def generate(state: RAG_State):
         for query, document in documents.items():
             documents_for_prompt += document
 
-    llm = get_anthropic_model(model_name="haiku")
+    llm = get_anthropic_model(model_name="haiku").with_structured_output(PAR_Final_RespondSchema)
+    fallback_llm = get_anthropic_model(model_name="sonnet").with_structured_output(PAR_Final_RespondSchema)
     rag_chain = (generate_prompt.partial(additional_restrictions="9. ALWAYS USE 'PAR_Final_RespondSchema' Tool, so the user know your high-level-outline!\n10. Take a careful at the schema of the tool, and use the tool.")
-                 | llm.with_structured_output(PAR_Final_RespondSchema))
+                 | llm.with_fallbacks([fallback_llm] * 5))
 
-    generation = rag_chain.invoke({
-        "question": question,
-        "documents": documents_for_prompt
-    })
+    generation = await retry_with_delay_async(
+        chain=rag_chain,
+        input={
+            'question': question,
+            'documents': documents_for_prompt
+        },
+        max_retries=3,
+        delay_seconds=60.0
+    )
 
     return {
         "keys": {
@@ -255,35 +279,50 @@ def generate(state: RAG_State):
     }
 
 
-workflow = StateGraph(RAG_State)
-# add node
-workflow.add_node("multi_query_generator", multi_query_generator_node)
-workflow.add_node("retrieve", retrieve_node)
-workflow.add_node("grade_documents", grade_document)
-workflow.add_node("think_high_level_outline", think_high_level_outline_node)
-workflow.add_node("composable_search", composable_search_node)
-workflow.add_node("generate", generate)
+def build_graph():
+    workflow = StateGraph(RAG_State)
+    # add node
+    workflow.add_node("transform_new_query", generate_new_prompt_node)
+    workflow.add_node("multi_query_generator", multi_query_generator_node)
+    workflow.add_node("retrieve", retrieve_node)
+    workflow.add_node("grade_documents", grade_document)
+    workflow.add_node("think_high_level_outline", think_high_level_outline_node)
+    workflow.add_node("composable_search", composable_search_node)
+    workflow.add_node("generate", generate)
 
-workflow.set_entry_point("multi_query_generator")
+    workflow.set_entry_point("transform_new_query")
 
-# add edge
-workflow.add_edge("multi_query_generator", "retrieve")
-workflow.add_edge("retrieve", "grade_documents")
-# conditional edges
-workflow.add_conditional_edges(
-    "grade_documents",
-    decide_to_generate,
-    {
-        "think_high_level_outline": "think_high_level_outline",
-        "generate": "generate"
-    }
-)
-workflow.add_edge("generate", END)
-workflow.add_edge("think_high_level_outline", "composable_search")
-workflow.add_edge("composable_search", "generate")
-app = workflow.compile()
+    # add edge
+    workflow.add_edge("transform_new_query", "multi_query_generator")
+    workflow.add_edge("multi_query_generator", "retrieve")
+    workflow.add_edge("retrieve", "grade_documents")
+    # conditional edges
+    workflow.add_conditional_edges(
+        "grade_documents",
+        decide_to_generate,
+        {
+            "think_high_level_outline": "think_high_level_outline",
+            "generate"                : "generate"
+        }
+    )
+    workflow.add_edge("generate", END)
+    workflow.add_edge("think_high_level_outline", "composable_search")
+    workflow.add_edge("composable_search", "generate")
+    return workflow.compile()
 
-if __name__ == "__main__":
+
+def get_graph_mermaid():
+    app = build_graph()
+    try:
+        print(app.get_graph(xray=True).draw_mermaid())
+        # display(Image(app.get_graph(xray=True).draw_mermaid_png()))
+    except Exception as e:
+        print(f"pass: {e}")
+        pass
+
+
+async def run_graph():
+    app = build_graph()
     print_warning_message()
     user_input = input("[y/n]:")
 
@@ -291,10 +330,10 @@ if __name__ == "__main__":
         clear_console()
         user_query = input("What are you looking for?: ")
         inputs = {
-            "original_query": user_query
+            "user_question": user_query
         }
 
-        result = app.invoke(inputs)
+        result = await app.ainvoke(inputs)
         print("####DOCUMENT####")
         print(result['keys']['full_documents'])
         print("----------------------------")
@@ -312,3 +351,9 @@ if __name__ == "__main__":
         clear_console()
         print_see_you_again()
 
+
+if __name__ == "__main__":
+    # get_graph_mermaid()
+    # get_tavily_search_agent_graph_mermaid()
+    # get_pm_graph_mermaid()
+    asyncio.run(run_graph())

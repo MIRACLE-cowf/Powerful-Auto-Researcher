@@ -1,4 +1,5 @@
 import os
+import re
 
 from Tool.Respond_Agent_Section_Tool import FinalResponse_SectionAgent
 
@@ -15,7 +16,7 @@ def extract_result(text):
     pattern_section_title = r'<section_title>(.*?)<\/section_title>'
     pattern_section_content = r'<section_content>(.*?)<\/section_content>'
     pattern_section_thought = r'<section_thought>(.*?)<\/section_thought>'
-    import re
+
     match_result = re.search(pattern_result, text, re.DOTALL)
     match_section_title = re.search(pattern_section_title, text, re.DOTALL)
     match_section_content = re.search(pattern_section_content, text, re.DOTALL)
@@ -73,7 +74,7 @@ def setup_new_document_format(document_title: str, document_description: str, or
     return f"# {document_title}\n\n## {original_question}\n\n{document_description}\n\n\n"
 
 
-def save_document_to_md(full_document: str, document_title: str):
+async def save_document_to_md(full_document: str, document_title: str):
     """After confirming with the user whether to save the file, creates a markdown file with the document_title as the filename inside the src folder
     Args:
         full_document: The combined value of each agent's results generated through the parse_result_to_document_format function
@@ -88,7 +89,7 @@ def save_document_to_md(full_document: str, document_title: str):
     user_response = input('[y/n] Would you want to save this document as a .md file?: ')
     if user_response.lower() == 'y':
         # create file name
-        file_name = f"{document_title}.md"
+        file_name = re.sub(r'/', '_', f"{document_title}.md")
 
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
