@@ -2,16 +2,17 @@ import asyncio
 import re
 from typing import TypedDict, Dict, Any
 
-from langchain import hub
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_text_splitters import CharacterTextSplitter
 from langgraph.graph import StateGraph, END
 
-from Agent_Team.Project_Manager_Agent import get_pm_graph
+from Agent_Team.Member.PAR_Tavily_Search_Agent_Graph import get_tavily_search_agent_graph_mermaid
+from Agent_Team.Project_Manager_Agent import get_pm_graph, get_pm_graph_mermaid
 from CustomHelper.Helper import generate_doc_result, generate_final_doc_results, retry_with_delay_async
 from CustomHelper.load_model import get_anthropic_model
 from Graph.THLO_Graph import get_THLO_Graph
 from Single_Chain.ConclustionChain import conclusion_chain
+from Single_Chain.GenerateFinalAnswer import get_generate_final_answer_chain
 from Single_Chain.GenerateNewPrompt import GenerateNewPromptFunc
 from Single_Chain.GradingDocumentsChain import grading_documents_chain
 from Single_Chain.MultiQueryChain import multi_query_chain, DerivedQueries
@@ -20,8 +21,6 @@ from Util.PAR_Helper import setup_new_document_format, parse_result_to_document_
     save_document_to_md
 from Util.Retriever_setup import parent_retriever
 from Util.console_controller import print_warning_message, clear_console, print_see_you_again
-
-generate_prompt = hub.pull("miracle/par_generation_prompt")
 
 
 class PAR_Final_RespondSchema(BaseModel):
@@ -240,6 +239,7 @@ async def generate(state: RAG_State):
     print("---GENERATE---")
     # print(f"state: {state}")
     state_dict = state["keys"]
+    user_question = state["user_question"]
     question = state["original_query"]
     documents = state_dict.get("grading_results", {})
     document_title = state.get("document_title", "")
@@ -272,15 +272,11 @@ async def generate(state: RAG_State):
         for query, document in documents.items():
             documents_for_prompt += document
 
-    llm = get_anthropic_model(model_name="haiku").with_structured_output(PAR_Final_RespondSchema)
-    fallback_llm = get_anthropic_model(model_name="sonnet").with_structured_output(PAR_Final_RespondSchema)
-    rag_chain = (generate_prompt.partial(additional_restrictions="9. ALWAYS USE 'PAR_Final_RespondSchema' Tool, so the user know your high-level-outline!\n10. Take a careful at the schema of the tool, and use the tool.")
-                 | llm.with_fallbacks([fallback_llm] * 5))
-
+    rag_chain = get_generate_final_answer_chain()
     generation = await retry_with_delay_async(
         chain=rag_chain,
         input={
-            'question': question,
+            'question': user_question,
             'documents': documents_for_prompt
         },
         max_retries=3,
@@ -330,6 +326,7 @@ def build_graph():
 def get_graph_mermaid():
     app = build_graph()
     try:
+        print("Main Graph Mermaid")
         print(app.get_graph(xray=True).draw_mermaid())
         # display(Image(app.get_graph(xray=True).draw_mermaid_png()))
     except Exception as e:
@@ -368,8 +365,12 @@ async def run_graph():
         print_see_you_again()
 
 
+def get_all_graph():
+    get_graph_mermaid()
+    get_tavily_search_agent_graph_mermaid()
+    get_pm_graph_mermaid()
+
+
 if __name__ == "__main__":
-    # get_graph_mermaid()
-    # get_tavily_search_agent_graph_mermaid()
-    # get_pm_graph_mermaid()
-    asyncio.run(run_graph())
+    get_all_graph()
+    # asyncio.run(run_graph())

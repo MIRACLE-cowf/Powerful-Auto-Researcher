@@ -310,4 +310,5 @@ def get_pm_graph():
 
 def get_pm_graph_mermaid():
     app = get_pm_graph()
+    print("Project Manager Agent Graph Mermaid")
     print(app.get_graph().draw_mermaid())

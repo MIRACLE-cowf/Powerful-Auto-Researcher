@@ -69,5 +69,6 @@ def get_tavily_search_agent_graph():
 
 def get_tavily_search_agent_graph_mermaid():
     app = get_tavily_search_agent_graph()
+    print("Search Agent Graph Mermaid")
     print(app.get_graph().draw_mermaid())
 
