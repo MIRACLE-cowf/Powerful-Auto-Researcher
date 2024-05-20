@@ -1,8 +1,10 @@
 from typing import Sequence, Tuple, List, Union
+
 from langchain_core.agents import AgentAction
 from langchain_core.messages import AIMessage, ToolMessage, BaseMessage
 
-from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentAction
+# from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentAction
+from CustomHelper.Custom_AnthropicAgentOutputParser_2 import AnthropicAgentAction
 from CustomHelper.Custom_Error_Handler import PAR_ERROR, PAR_SUCCESS
 
 
@@ -20,7 +22,8 @@ def _create_tool_message(
     if isinstance(observation, PAR_SUCCESS):
         content = observation.result
     elif isinstance(observation, PAR_ERROR):
-        content = f"Tool Execution Error: Tool Name: {agent_action.tool} Error Message: {observation.message}"
+        content = f"Tool Execution Error:\nError Message: {observation.message}"
+
     else:
         if not isinstance(observation, str):
             try:

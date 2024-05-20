@@ -25,7 +25,7 @@ def run_agent(data: AgentState):
     print('---ARXIV AGENT GRAPH RUN---')
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
-    agent = create_agent(llm=get_anthropic_model(model_name="sonnet"), tools=[arXiv_search_tool], agent_specific_role="ArXiv")
+    agent = create_agent(llm=get_anthropic_model(model_name="sonnet"), tool=arXiv_search_tool, agent_specific_role="ArXiv")
     return agent_outcome_checker(agent=agent, input=input, intermediate_steps=intermediate_steps)
 
 

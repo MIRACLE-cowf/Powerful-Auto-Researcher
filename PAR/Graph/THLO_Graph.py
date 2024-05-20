@@ -5,7 +5,7 @@ from langchain import hub
 from langgraph.graph import StateGraph
 
 from CustomHelper.THLO_helper import Thought, HighLevelDocument_Outline, HighLevelDocument_Plan
-from CustomHelper.load_model import get_openai_model
+from CustomHelper.load_model import get_anthropic_model
 
 thought_prompt = hub.pull("miracle/par_thought_prompt_public")
 high_level_outline_prompt = hub.pull("miracle/par_high_level_outline_prompt_public")
@@ -16,15 +16,11 @@ generate_search_query_plans_prompt = hub.pull("miracle/par_generate_search_query
 # Note: But it can also pretty good with "haiku" and "sonnet"
 # Just your judgement. But I'm use "opus" at "high level outline" stage.
 
-# thought_llm = get_anthropic_model(model_name="sonnet")
-# high_level_outline_llm = get_anthropic_model(model_name="opus")
-# generate_search_query_plans_llm = get_anthropic_model(model_name="opus")
-# generate_search_query_plans_fallback_final = get_anthropic_model(model_name="opus")
 
-thought_llm = get_openai_model(model_name="gpt4")
-high_level_outline_llm = get_openai_model(model_name="gpt4")
-generate_search_query_plans_llm = get_openai_model(model_name="gpt4")
-generate_search_query_plans_fallback_final = get_openai_model(model_name="gpt4")
+# thought_llm = get_openai_model(model_name="gpt4")
+# high_level_outline_llm = get_openai_model(model_name="gpt4")
+# generate_search_query_plans_llm = get_openai_model(model_name="gpt4")
+# generate_search_query_plans_fallback_final = get_openai_model(model_name="gpt4")
 
 
 def thought_output_parser(thought: Thought) -> dict:
@@ -45,7 +41,15 @@ def generate_search_query_plans_parser(plan: HighLevelDocument_Plan) -> dict:
     }
 
 
-thought_chain = thought_prompt | thought_llm.with_structured_output(Thought) | thought_output_parser
+def get_thought_chain():
+    thought_llm = get_anthropic_model(model_name="sonnet")
+    _thought_llm = thought_llm.with_structured_output(Thought)
+    fallback_llm = _thought_llm.with_fallbacks([_thought_llm] * 3)
+    thought_chain = thought_prompt | fallback_llm | thought_output_parser
+
+    fallback_chain = thought_chain.with_fallbacks([thought_chain] * 3)
+    return fallback_chain
+
 
 search_engines_description = """Search Engine 1:
 >> name: Tavily
@@ -64,19 +68,27 @@ Search Engine 5:
 >> description: BraveSearch is ideal for comprehensive searches across a wide range of topics, providing results that are both directly and indirectly related to the query or keywords. It offers a broad spectrum of information, including diverse perspectives and the latest updates, making it perfect for queries that require a variety of viewpoints and up-to-date information. BraveSearch delivers a balanced mix of reliable, high-quality sources and user-generated content such as blogs, social media, and forums. By crawling and indexing a vast number of web pages, it ensures extensive coverage and delivers well-rounded search results.
 """
 
-high_level_outline_chain = (
-    {
-        "derived_queries": itemgetter("derived_queries"),
-        "inner_monologue": itemgetter("inner_monologue"),
-        "original_question": itemgetter("original_question"),
-    }
-    | high_level_outline_prompt.partial(additional_instructions="",
-                                        search_engines=search_engines_description,
-                                        additional_restrictions="10. ALWAYS USE 'HighLevelDocument_Outline' Tool, so the user know your high-level-outline! Take a careful at the schema of the tool, and use the tool.")
-    | high_level_outline_llm.with_structured_output(HighLevelDocument_Outline)
-    | high_level_outline_parser
 
-)
+def get_high_level_outline_chain():
+    high_level_outline_llm = get_anthropic_model(model_name="opus")
+    _high_level_outline_llm = high_level_outline_llm.with_structured_output(HighLevelDocument_Outline)
+    fallback_llm = _high_level_outline_llm.with_fallbacks([_high_level_outline_llm] * 3)
+    high_level_outline_chain = (
+            {
+                "derived_queries"  : itemgetter("derived_queries"),
+                "inner_monologue"  : itemgetter("inner_monologue"),
+                "original_question": itemgetter("original_question"),
+            }
+            | high_level_outline_prompt.partial(additional_instructions="",
+                                                search_engines=search_engines_description,
+                                                additional_restrictions="10. ALWAYS USE 'HighLevelDocument_Outline' Tool, so the user know your high-level-outline! Take a careful at the schema of the tool, and use the tool.")
+            | fallback_llm
+            | high_level_outline_parser
+    )
+
+    fallback_chain = high_level_outline_chain.with_fallbacks([high_level_outline_chain] * 3)
+    return fallback_chain
+
 
 # This is for generate_search_query_plans stage, You can freely modify it!
 tool_description_with_search_query_tip = """Tool 1:
@@ -102,19 +114,27 @@ Tool 5:
 """
 
 
-generate_search_query_plans_chain = (
-    {
-        "original_question": itemgetter("original_question"),
-        "inner_monologue": itemgetter("inner_monologue"),
-        "high_level_outline": itemgetter("high_level_outline")
-    }
-    | generate_search_query_plans_prompt.partial(
-        additional_restrictions="7. ALWAYS USE 'HighLevelDocument_Plan' Tool, so the user know your plan! Take a careful at the schema of the tool, and use the tool.\n8. **ALWAYS USE ENGLISH**",
-        tools=tool_description_with_search_query_tip
-        )
-    | generate_search_query_plans_llm.with_structured_output(HighLevelDocument_Plan).with_fallbacks([generate_search_query_plans_llm.with_structured_output(HighLevelDocument_Plan)] * 5)
-    | generate_search_query_plans_parser
-)
+def get_generate_search_query_plans_chain():
+    generate_search_query_plans_llm = get_anthropic_model(model_name="opus")
+    _generate_search_query_plans_llm = generate_search_query_plans_llm.with_structured_output(HighLevelDocument_Plan)
+    fallback_llm = _generate_search_query_plans_llm.with_fallbacks([_generate_search_query_plans_llm] * 5)
+    generate_search_query_plans_chain = (
+            {
+                "original_question" : itemgetter("original_question"),
+                "inner_monologue"   : itemgetter("inner_monologue"),
+                "high_level_outline": itemgetter("high_level_outline")
+            }
+            | generate_search_query_plans_prompt.partial(
+                additional_restrictions="7. ALWAYS USE 'HighLevelDocument_Plan' Tool, so the user know your plan! Take a careful at the schema of the tool, and use the tool.\n8. **ALWAYS USE ENGLISH**",
+                tools=tool_description_with_search_query_tip
+                )
+            | fallback_llm
+            | generate_search_query_plans_parser
+    )
+    fallback_chain = generate_search_query_plans_chain.with_fallbacks([generate_search_query_plans_chain] * 5)
+    return fallback_chain
+
+
 
 
 class THLO_state(TypedDict):
@@ -131,7 +151,7 @@ async def thought_node(state: THLO_state):
     print("---THLO STATE: THOUGHT NODE---")
     original_question = state["original_question"]
     derived_queries = state["derived_queries"]
-    thought_result = await thought_chain.ainvoke({
+    thought_result = await get_thought_chain().ainvoke({
         "original_question": original_question,
         "derived_queries": derived_queries
     })
@@ -144,7 +164,7 @@ async def high_level_outline_node(state: THLO_state):
     original_question = state["original_question"]
     derived_queries = state["derived_queries"]
     inner_monologue = state['inner_monologue']
-    high_level_outline_result = await high_level_outline_chain.ainvoke({
+    high_level_outline_result = await get_high_level_outline_chain().ainvoke({
         'original_question': original_question,
         'derived_queries': derived_queries,
         'inner_monologue': inner_monologue.as_str(),
@@ -165,8 +185,8 @@ async def generate_search_query_node(state: THLO_state):
     high_level_outline = state['high_level_outline']['high_level_outline']
     evaluation_criteria = high_level_outline.evaluation_criteria
 
-    generate_search_query_plans_chain_with_fallback = generate_search_query_plans_chain.with_fallbacks([generate_search_query_plans_chain] * 5)
-    generate_search_query_result = await generate_search_query_plans_chain_with_fallback.ainvoke({
+    generate_search_query_plans_chain = get_generate_search_query_plans_chain()
+    generate_search_query_result = await generate_search_query_plans_chain.ainvoke({
         "original_question": original_question,
         "inner_monologue": inner_monologue.as_str(),
         "high_level_outline": high_level_outline.as_str()

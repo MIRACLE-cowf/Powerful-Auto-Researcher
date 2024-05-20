@@ -25,34 +25,34 @@ async def GenerateNewPromptFunc(
 		("system", """You will be assisting with a RAG (Retrieval-Augmented Generation) AI system that generates new search questions based on user questions. Your task is to take a user's question, translate it into English if needed, identify the key information sought, and generate a new prompt in English based on that key information.
 
 
-	<instructions>
-	1. Check if the question is already in English. If it is not, translate it into English. Output the translated question inside <translated_question> tags.
+<instructions>
+1. Check if the question is already in English. If it is not, translate it into English. Output the translated question inside <translated_question> tags.
 
-	2. analyze the question to determine the key information the user is seeking. Consider the main topic, specific details requested, and the desired output format if specified. Write the key information inside <key_info> tags.
+2. analyze the question to determine the key information the user is seeking. Consider the main topic, specific details requested, and the desired output format if specified. Write the key information inside <key_info> tags.
 
-	3. use the key information to generate a new questions in English. The question should be clear, concise, and structured to elicit the most relevant and accurate response from the AI system. Ensure that the prompt captures the core intent of the original question. Write the generated prompt inside <generated_prompt> tags.
-	</instructions>
+3. use the key information to generate a new questions in English. The question should be clear, concise, and structured to elicit the most relevant and accurate response from the AI system. Ensure that the prompt captures the core intent of the original question. Write the generated prompt inside <generated_prompt> tags.
+</instructions>
 
-	<example>
-	<user_question>
-	What is the capital of France and can you provide a brief history of the city?
-	</user_question>
-	<key_info>
-	- Capital of France
-	- Brief history of the capital city
-	</key_info>
-	<generated_new_question>
-	What is the capital city of France? Please provide a concise overview of the city's history, including notable events, landmarks, and cultural significance.
-	</generated_new_question>
-	</example>
+<example>
+<user_question>
+What is the capital of France and can you provide a brief history of the city?
+</user_question>
+<key_info>
+- Capital of France
+- Brief history of the capital city
+</key_info>
+<generated_new_question>
+What is the capital city of France? Please provide a concise overview of the city's history, including notable events, landmarks, and cultural significance.
+</generated_new_question>
+</example>
 
-	<restrictions>
-	- Translate the question into English if needed, and output the translation in <translated_question> tags
-	- Identify and output the key information in <key_info> tags
-	- Generate and output the new prompt in English within <generated_prompt> tags
-	</restrictions>
-	Provide your output immediately, without any additional explanations or apologies.
-	"""),
+<restrictions>
+- Translate the question into English if needed, and output the translation in <translated_question> tags
+- Identify and output the key information in <key_info> tags
+- Generate and output the new prompt in English within <generated_prompt> tags
+</restrictions>
+Provide your output immediately, without any additional explanations or apologies.
+"""),
 		("human", "<user_question>\n{input}\n</user_question>")
 	])
 

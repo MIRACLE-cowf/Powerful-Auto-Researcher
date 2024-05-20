@@ -26,7 +26,7 @@ def run_agent(data: AgentState):
     print('---WIKIPEDIA AGENT GRAPH RUN---')
     input = data["input"]
     intermediate_steps = data["intermediate_steps"]
-    agent = create_agent(llm=get_anthropic_model(), tools=[wikipedia], agent_specific_role="Wikipedia")
+    agent = create_agent(llm=get_anthropic_model(), tool=wikipedia, agent_specific_role="Wikipedia")
     return agent_outcome_checker(agent=agent, input=input, intermediate_steps=intermediate_steps)
 
 

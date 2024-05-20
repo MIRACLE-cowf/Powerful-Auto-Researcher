@@ -3,6 +3,7 @@ from typing import TypedDict, Union, Annotated, Dict, Any
 
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_core.agents import AgentAction, AgentFinish
+from langchain_core.runnables import Runnable
 from langgraph.graph import StateGraph
 
 from Agent_Team.create_agent import create_agent
@@ -33,7 +34,7 @@ class SearchAgentGraph:
 	async def __run_agent(self, data: AgentState):
 		input = data["input"]
 		intermediate_steps = data["intermediate_steps"]
-		agent = create_agent(llm=get_anthropic_model(model_name="sonnet"), tools=[self.tool], agent_specific_role=self.agent_specific_role)
+		agent = create_agent(llm=get_anthropic_model(model_name="sonnet"), tool=self.tool, agent_specific_role=self.agent_specific_role)
 		return await agent_outcome_checker(agent=agent, input=input, intermediate_steps=intermediate_steps)
 
 	def __router(self, data: AgentState):
@@ -45,15 +46,17 @@ class SearchAgentGraph:
 	async def __search_node(self, data: AgentState):
 		agent_action = data['agent_outcome']
 		max_results = agent_action.tool_input.get('max_results', None)
+
+		print(f"search node's agent action: {agent_action}")
 		search_result = await self.search_func(
-			query=agent_action.tool_input['query'],
+			query=agent_action.tool_input['query'], # 여기서 자꾸 KeyError 'query' 발생함
 			max_results=max_results
 		)
 		return {
 			'intermediate_steps': [(agent_action, search_result)]
 		}
 
-	def get_search_agent_graph(self):
+	def get_search_agent_graph(self) -> Runnable:
 		workflow = StateGraph(AgentState)
 		workflow.add_node("agent", self.__run_agent)
 		workflow.add_node(self.agent_specific_role.lower(), self.__search_node)
@@ -99,3 +102,4 @@ class YoutubeSearchAgentGraph(SearchAgentGraph):
 	def __init__(self):
 		super().__init__(Custom_YouTubeSearchTool(), "Youtube")
 		self.search_func = youtube_search_v2
+

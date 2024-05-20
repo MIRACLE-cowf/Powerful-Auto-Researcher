@@ -1,8 +1,9 @@
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.tools import BaseTool
 
 from CustomHelper.Anthropic_helper import format_to_anthropic_tool_messages
-from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_beta
+from CustomHelper.Custom_AnthropicAgentOutputParser_2 import AnthropicAgentOutputParser
 from CustomHelper.load_model import get_anthropic_model
 
 
@@ -41,7 +42,7 @@ def select_prompt_template(agent_specific_role: str) -> dict:
     }
 
 
-def create_agent(llm: ChatAnthropic, tools: list, agent_specific_role: str):
+def create_agent(llm: ChatAnthropic, tool: BaseTool, agent_specific_role: str):
     fallback_llm = get_anthropic_model(model_name="opus")
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a seasoned researcher agent with extensive experience in utilizing the {search_engine} API for data collection and analysis.
@@ -127,7 +128,7 @@ As a {search_engine} search specialized agent, please provide the best search re
         MessagesPlaceholder(variable_name="agent_scratchpad")
     ])
     search_template = select_prompt_template(agent_specific_role=agent_specific_role)
-    run_llm = llm.bind_tools(tools=tools).with_fallbacks([fallback_llm.bind_tools(tools=tools)] * 5)
+    run_llm = llm.bind_tools(tools=[tool]).with_fallbacks([fallback_llm.bind_tools(tools=[tool])] * 5)
     agent_chain = (
         {
             "input": lambda x: x["input"],
@@ -135,7 +136,7 @@ As a {search_engine} search specialized agent, please provide the best search re
         }
         | prompt.partial(search_engine=search_template["search_engine"], search_engine_description=search_template["search_engine_description"], search_query_tip=search_template["search_query_tip"])
         | run_llm
-        | AnthropicAgentOutputParser_beta()
+        | AnthropicAgentOutputParser()
     )
     return agent_chain
 

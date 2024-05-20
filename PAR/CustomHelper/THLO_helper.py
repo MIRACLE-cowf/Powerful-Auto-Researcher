@@ -1,4 +1,5 @@
 from typing import List
+
 from langchain_core.pydantic_v1 import BaseModel, Field
 
 
@@ -45,7 +46,7 @@ class HighLevelDocument_Outline(BaseModel):
     title is 'string' type"""
     title: str = Field(..., description="The title of the completed document. Should be English")
     objective: str = Field(..., description="State the main objective or purpose of the document. Should be English")
-    sections: List[Section] = Field(..., description="List the sections of the document. Should be English")
+    sections: List[Section] = Field(..., description="LIST-UP the sections of the document. Should be English")
     evaluation_criteria: str = Field(...,
                                      description="Define the criteria for evaluating the quality and effectiveness of the completed document. Should be English")
 

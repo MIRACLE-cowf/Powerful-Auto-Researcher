@@ -1,6 +1,7 @@
 from typing import List, Any
+
 from langchain.agents import AgentOutputParser
-from langchain_core.agents import AgentAction, AgentFinish, AgentActionMessageLog
+from langchain_core.agents import AgentFinish, AgentActionMessageLog
 from langchain_core.exceptions import OutputParserException
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import Generation, ChatGeneration
@@ -12,6 +13,7 @@ class AnthropicAgentAction(AgentActionMessageLog):
 
 
 def is_tool_use(content):
+    print(f'is_tool_use: {content}')
     if isinstance(content, list):
         return any(item.get("type") == "tool_use" for item in content)
     elif isinstance(content, dict):
@@ -37,6 +39,7 @@ class AnthropicAgentOutputParser_beta(AgentOutputParser):
                 f"Expected exactly one result, but got {len(result)}"
             )
         generation = result[0]
+        print(f'generation: {generation}')
 
         if not isinstance(generation, ChatGeneration):
             raise OutputParserException(

@@ -91,6 +91,22 @@ async def grade_document(state: RAG_State):
 
     grading_chain = grading_documents_chain(model=get_anthropic_model())
 
+    # grading_chain_input = []
+    # for new_query, documents in retrieve_result.items():
+    #     doc_str = generate_doc_result(documents)
+    #     grading_chain_input.append({'question': new_query, 'documents': doc_str})
+    #
+    # _grade_results = await grading_chain.abatch(inputs=grading_chain_input)
+    # print(_grade_results)
+    # grade_count = 0
+    # for grade in _grade_results:
+    #     if grade.grade.binary_score:
+    #         final_doc_results = ""
+    #         final_doc_results += generate_final_doc_results()
+    #         grade_count += 1
+    #     else:
+    #         grading_results[new_query] = "needsearch"
+
     for new_query, documents in retrieve_result.items():
         doc_str = generate_doc_result(documents)
 
