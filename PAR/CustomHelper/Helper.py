@@ -10,6 +10,12 @@ from CustomHelper.Custom_Error_Handler import PAR_ERROR
 from CustomHelper.load_model import get_anthropic_model
 
 
+def get_current_date():
+    from datetime import datetime
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    return current_date
+
+
 def generate_doc_result(docs: List[Document]):
     doc_results = ""
 

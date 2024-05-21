@@ -43,7 +43,7 @@ def web_search(
 
         if isinstance(search_results, dict) and "results" in search_results:
             docs = search_results["results"]
-            web_results = f"<overall_summary>{search_results['answer']}</overall_summary>"
+            web_results = f"<web_results>\n<overall_summary>{search_results['answer']}</overall_summary>"
             chain_batch_input = [{'question': query, 'context': doc['raw_content']} for doc in docs]
             chain_batch_result = extract_tavily_chain.batch(chain_batch_input)
 
@@ -59,6 +59,7 @@ def web_search(
                                 "</document>\n\n")
 
             print("---TAVILY SEARCH DONE---")
+            web_results += "\n</web_results>"
             return web_results
         else:
             error_message = str(search_results) if isinstance(search_results, str) else "Unexpected error occurred!"

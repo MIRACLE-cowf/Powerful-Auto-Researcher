@@ -5,6 +5,7 @@ import aiohttp
 import requests
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from langchain_core.pydantic_v1 import BaseModel, Field, SecretStr, root_validator, Extra
+from langchain_core.runnables import RunnableWithFallbacks
 from langchain_core.tools import BaseTool
 from langchain_core.utils import get_from_dict_or_env
 
@@ -268,3 +269,16 @@ class Custom_BraveSearchResults(BaseTool):
 			print(f"BRAVE SEARCH API occur error! {str(e)}")
 			raise PAR_ERROR(str(e))
 
+
+def get_brave_search_tool(max_results: Optional[int] = None) -> RunnableWithFallbacks:
+	if max_results is None:
+		max_results = 5
+
+	_brave_search_tool = Custom_BraveSearchResults(
+		max_results=max_results,
+		extra_snippets=True,
+		summary=True,
+	)
+	_brave_search_tool_with_fallbacks = _brave_search_tool.with_fallbacks([_brave_search_tool] * 10)
+	print('@@@@ LOAD BRAVE SEARCH TOOL SUCCESSFULLY @@@@')
+	return _brave_search_tool_with_fallbacks

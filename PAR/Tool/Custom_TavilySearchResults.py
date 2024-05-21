@@ -4,6 +4,7 @@ from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from langchain_core.pydantic_v1 import BaseModel, Field
+from langchain_core.runnables import RunnableWithFallbacks
 
 from CustomHelper.Custom_Error_Handler import PAR_ERROR
 
@@ -190,3 +191,19 @@ class Custom_TavilySearchAPIWrapper(TavilySearchAPIWrapper):
             clean_results.append(clean_result)
         final_results["results"] = clean_results
         return final_results
+
+
+def get_tavily_search_tool(max_results: Optional[int] = None) -> RunnableWithFallbacks:
+    if max_results is None:
+        max_results = 5
+
+    _tavily_search_tool = Custom_TavilySearchResults(
+        api_wrapper=Custom_TavilySearchAPIWrapper(),
+        include_answer=True,
+        include_raw_content=True,
+        max_results=max_results,
+        include_image=True
+    )
+    _tavily_search_tool_with_fallbacks = _tavily_search_tool.with_fallbacks([_tavily_search_tool] * 60)
+    print('@@@@ LOAD TAVILY TOOL SUCCESSFULLY @@@@')
+    return _tavily_search_tool_with_fallbacks

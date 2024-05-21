@@ -3,6 +3,7 @@ import re
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
+from CustomHelper.Helper import get_current_date
 from CustomHelper.load_model import get_anthropic_model
 
 
@@ -24,13 +25,18 @@ async def GenerateNewPromptFunc(
 	prompt = ChatPromptTemplate.from_messages([
 		("system", """You will be assisting with a RAG (Retrieval-Augmented Generation) AI system that generates new search questions based on user questions. Your task is to take a user's question, translate it into English if needed, identify the key information sought, and generate a new prompt in English based on that key information.
 
+Today is {current_date}
 
 <instructions>
-1. Check if the question is already in English. If it is not, translate it into English. Output the translated question inside <translated_question> tags.
+1. Check current date first.
 
-2. analyze the question to determine the key information the user is seeking. Consider the main topic, specific details requested, and the desired output format if specified. Write the key information inside <key_info> tags.
+2. Check if the question is already in English. If it is not, translate it into English. Output the translated question inside <translated_question> tags.
 
-3. use the key information to generate a new questions in English. The question should be clear, concise, and structured to elicit the most relevant and accurate response from the AI system. Ensure that the prompt captures the core intent of the original question. Write the generated prompt inside <generated_prompt> tags.
+3. Analyze the question to determine the key information the user is seeking. Consider the main topic, specific details requested, and the desired output format if specified. Write the key information inside <key_info> tags.
+
+4. Use the key information to generate a new questions in English. The generated question should be clear, concise, and structured to elicit the most relevant and accurate response from the AI system. Ensure that the prompt captures the core intent of the original question. Write the generated prompt inside <generated_prompt> tags.
+
+5. If the question is relevant to the date, incorporate it naturally.
 </instructions>
 
 <example>
@@ -55,8 +61,8 @@ Provide your output immediately, without any additional explanations or apologie
 """),
 		("human", "<user_question>\n{input}\n</user_question>")
 	])
-
-	_generate_new_question_chain = prompt | llm | StrOutputParser()
+	current_date = get_current_date()
+	_generate_new_question_chain = prompt.partial(current_date=current_date) | llm | StrOutputParser()
 
 	print(f'---ENTER CONVERT NEW QUESTION BY USER QUESTION: {user_input}')
 	new_question = await _generate_new_question_chain.ainvoke({

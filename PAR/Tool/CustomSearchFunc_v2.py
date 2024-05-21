@@ -78,7 +78,8 @@ Summary:
 [Insights and analysis of the relationships or differences among the extracted information]
 </response_format>
 
-As an information extraction specialized agent, extract the most relevant and reliable information from the provided raw content based on the given search queries. Follow the guidelines and restrictions mentioned above to contribute effectively to the PAR project."""),
+As an information extraction specialized agent, extract the most relevant and reliable information from the provided raw content based on the given search queries. 
+Follow the guidelines and restrictions mentioned above to contribute effectively to the PAR project."""),
         ("human", "<search_query>\n{search_query}\n</search_query>\n"
                   "<search_results>\n{search_result}\n</search_results>")
     ])

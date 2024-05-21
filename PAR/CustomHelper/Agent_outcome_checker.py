@@ -9,14 +9,15 @@ from CustomHelper.Helper import retry_with_delay_async
 
 async def agent_outcome_checker(
         agent: RunnableSerializable,
-        input: str,
+        input: dict,
         intermediate_steps: Annotated[list[tuple[AgentAction, str]], operator.add]
 ) -> dict[str, Any] | dict[str, AgentFinish]:
 
     agent_outcome = await retry_with_delay_async(
         chain=agent,
         input={
-            "input": input,
+            "input": input["input"],
+            "section_info": input["section_info"],
             "intermediate_steps": intermediate_steps
         },
         max_retries=3,

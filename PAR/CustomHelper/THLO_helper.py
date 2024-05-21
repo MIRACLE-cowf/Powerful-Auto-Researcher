@@ -132,6 +132,19 @@ class SectionPlan(BaseModel):
         xml_output += "</section>"
         return xml_output
 
+    def as_str_for_basic_info(self) -> str:
+        xml_output = f"<section>\n<title>{self.title}</title>\n"
+        xml_output += f"<explanation>{self.explanation}</explanation>\n"
+        xml_output += f"<content_type>{self.content_type}</content_type>\n"
+        xml_output += "<key_points>\n"
+        for point in self.key_points:
+            xml_output += f"<point>{point}</point>\n"
+        xml_output += "</key_points>\n"
+        xml_output += f"<synthesis_plan>{self.synthesis_plan}</synthesis_plan>\n"
+        xml_output += f"<outline>{self.outline}</outline>\n"
+        xml_output += "</section>"
+        return xml_output
+
     def as_str_title_explanation(self) -> str:
         return f"<section>\n<title>{self.title}</title>\n<explanation>{self.explanation}</explanation>\n</section>\n"
 

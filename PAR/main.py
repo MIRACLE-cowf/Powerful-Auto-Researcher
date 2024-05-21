@@ -1,17 +1,19 @@
 import asyncio
 import re
-from typing import TypedDict, Dict, Any
+from typing import TypedDict, Dict, Any, List
 
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_text_splitters import CharacterTextSplitter
 from langgraph.graph import StateGraph, END
 
-from Agent_Team.Member.PAR_Tavily_Search_Agent_Graph import get_tavily_search_agent_graph_mermaid
+from Agent_Team.Member.Common_Search_AgentGraph import TavilySearchAgentGraph
 from Agent_Team.Project_Manager_Agent import get_pm_graph, get_pm_graph_mermaid
 from CustomHelper.Helper import generate_doc_result, generate_final_doc_results, retry_with_delay_async
+from CustomHelper.THLO_helper import SectionPlan
 from CustomHelper.load_model import get_anthropic_model
 from Graph.THLO_Graph import get_THLO_Graph
 from Single_Chain.ConclustionChain import conclusion_chain
+from Single_Chain.FastSearchChain import get_fast_search_result
 from Single_Chain.GenerateFinalAnswer import get_generate_final_answer_chain
 from Single_Chain.GenerateNewPrompt import GenerateNewPromptFunc
 from Single_Chain.GradingDocumentsChain import grading_documents_chain
@@ -40,6 +42,8 @@ class RAG_State(TypedDict):
     derived_queries: DerivedQueries
     document_title: str
     document_description: str
+    fast_search_results: str
+    search_continue: bool
     keys: Dict[str, Any]
 
 
@@ -170,10 +174,46 @@ async def think_high_level_outline_node(state: RAG_State):
     })
     print('---MAIN STATE: THINK HIGH LEVEL OUTLINE GRAPH END---')
     return {
-        "keys": {
-            'high_level_outline': high_level_outline["search_query_engine_plan"],
-            'evaluation_criteria': high_level_outline["evaluation_criteria"],
-        }
+        'high_level_outline': high_level_outline["search_query_engine_plan"],
+        'evaluation_criteria': high_level_outline["evaluation_criteria"],
+    }
+
+
+async def fast_search(state: RAG_State):
+    print("---MAIN STATE: FAST SEARCH IN---")
+    fast_search_results = await get_fast_search_result(state["original_query"])
+    print("---MAIN STATE: FAST SEARCH OUT---")
+
+    return {
+        "fast_search_results": fast_search_results,
+    }
+
+
+async def parallel_execution_node(state: RAG_State):
+    print("---MAIN STATE: PARALLEL EXECUTION IN---")
+    fast_search_task = asyncio.create_task(fast_search(state))
+    thlo_task = asyncio.create_task(think_high_level_outline_node(state))
+
+    _fast_search_result = await fast_search_task
+    print(f"fast search result: {_fast_search_result['fast_search_results']}")
+    state["fast_search_results"] = _fast_search_result['fast_search_results']
+    user_input = input("Fast search completed. Continue with Deep Search? (y/n) ")
+    if user_input.lower() != 'y':
+        state["search_continue"] = False
+        thlo_task.cancel()
+        return {**state}
+
+    _thlo_graph_result = await thlo_task
+    print(_thlo_graph_result)
+    state["keys"] = {
+        "high_level_outline": _thlo_graph_result["high_level_outline"],
+        "evaluation_criteria": _thlo_graph_result["evaluation_criteria"],
+    }
+    state["search_continue"] = True
+    print("---MAIN STATE: PARALLEL EXECUTION COMPLETE---")
+
+    return {
+        **state,
     }
 
 
@@ -193,8 +233,8 @@ async def composable_search_node(state: RAG_State):
 
     search_graph_batch_results = []
 
-    def prepare_batch_input_data(_sections) -> list:
-        return [{'input': _section.as_str(), 'search_result': "", 'order': _section.order} for _section in _sections]
+    def prepare_batch_input_data(_sections: List[SectionPlan]) -> list:
+        return [{'input': _section.as_str(), 'search_result': "", 'order': _section.order, 'section_basic_info': _section.as_str_for_basic_info()} for _section in _sections]
 
     search_graph_batch_input = prepare_batch_input_data(sections[:-1])
     project_manager_graph = get_pm_graph()
@@ -209,6 +249,7 @@ async def composable_search_node(state: RAG_State):
     for order in sorted(ordered_results.keys()):
         print(f'---ORDER: {order}---')
         search_graph_result = ordered_results[order]
+        print(search_graph_result)
 
         if search_graph_result["final_section_document"]:
             document = search_graph_result["final_section_document"]
@@ -291,20 +332,33 @@ async def generate(state: RAG_State):
     }
 
 
+def decide_continue(state: RAG_State):
+    print(state)
+    if state['search_continue'] is True:
+        return "True"
+    else:
+        return "False"
+
+
 def build_graph():
     workflow = StateGraph(RAG_State)
     # add node
     workflow.add_node("transform_new_query", generate_new_prompt_node)
+    # workflow.add_node("fast_search", fast_search_node)
     workflow.add_node("multi_query_generator", multi_query_generator_node)
     workflow.add_node("retrieve", retrieve_node)
     workflow.add_node("grade_documents", grade_document)
-    workflow.add_node("think_high_level_outline", think_high_level_outline_node)
+
+    workflow.add_node("parallel_execution", parallel_execution_node)
+
+    # workflow.add_node("think_high_level_outline", think_high_level_outline_node)
     workflow.add_node("composable_search", composable_search_node)
     workflow.add_node("generate", generate)
 
     workflow.set_entry_point("transform_new_query")
 
     # add edge
+    # workflow.add_edge("transform_new_query", "fast_search")
     workflow.add_edge("transform_new_query", "multi_query_generator")
     workflow.add_edge("multi_query_generator", "retrieve")
     workflow.add_edge("retrieve", "grade_documents")
@@ -313,12 +367,20 @@ def build_graph():
         "grade_documents",
         decide_to_generate,
         {
-            "think_high_level_outline": "think_high_level_outline",
+            "think_high_level_outline": "parallel_execution",
             "generate"                : "generate"
         }
     )
+    workflow.add_conditional_edges(
+        "parallel_execution",
+        decide_continue,
+        {
+            "True": "composable_search",
+            "False": END
+        }
+    )
     workflow.add_edge("generate", END)
-    workflow.add_edge("think_high_level_outline", "composable_search")
+    # workflow.add_edge("think_high_level_outline", "composable_search")
     workflow.add_edge("composable_search", "generate")
     return workflow.compile()
 
@@ -347,18 +409,20 @@ async def run_graph():
         }
 
         result = await app.ainvoke(inputs)
+        print(result)
         print("####DOCUMENT####")
         print(result['keys']['full_documents'])
         print("----------------------------")
 
         final_result = result['keys']['generation']
-        print(f"Final Result: {final_result.direct_response}\n"
-              f"\n###BACKGROUND###\n{final_result.background}\n"
-              f"###INTRODUCTION###\n{final_result.introduction}\n"
-              f"###EXCERPTS###\n{final_result.excerpts}\n"
-              f"###INSIGHTS###\n{final_result.insights}\n"
-              f"###CONCLUSTION###\n{final_result.conclusion}\n"
-              f"###ANY_HELPFUL###\n{final_result.any_helpful}\n")
+        print(f"Final Result: \n\n{final_result}")
+        # print(f"Final Result: {final_result.direct_response}\n"
+        #       f"\n###BACKGROUND###\n{final_result.background}\n"
+        #       f"###INTRODUCTION###\n{final_result.introduction}\n"
+        #       f"###EXCERPTS###\n{final_result.excerpts}\n"
+        #       f"###INSIGHTS###\n{final_result.insights}\n"
+        #       f"###CONCLUSTION###\n{final_result.conclusion}\n"
+        #       f"###ANY_HELPFUL###\n{final_result.any_helpful}\n")
 
     else:
         clear_console()
@@ -367,10 +431,11 @@ async def run_graph():
 
 def get_all_graph():
     get_graph_mermaid()
-    get_tavily_search_agent_graph_mermaid()
+    search_graph = TavilySearchAgentGraph()
+    search_graph.get_search_agent_graph_mermaid()
     get_pm_graph_mermaid()
 
 
 if __name__ == "__main__":
-    get_all_graph()
-    # asyncio.run(run_graph())
+    # get_all_graph()
+    asyncio.run(run_graph())

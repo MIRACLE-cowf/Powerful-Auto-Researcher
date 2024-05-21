@@ -1,9 +1,10 @@
+import asyncio
 from typing import Optional, Union
 
 from CustomHelper.Custom_Error_Handler import PAR_SUCCESS, PAR_ERROR
 from CustomHelper.Helper import retry_with_delay_async
 from Tool.CustomSearchFunc_v2 import _get_content_extraction_agent
-from Tool.Custom_BraveSearchResults import Custom_BraveSearchResults
+from Tool.Custom_BraveSearchResults import get_brave_search_tool
 
 
 def _build_brave_results(search_results: dict) -> str:
@@ -35,16 +36,9 @@ async def brave_search_func(
 	query: str,
 	max_results: Optional[int] = None,
 ) -> Union[PAR_SUCCESS, PAR_ERROR]:
-	if max_results is None:
-		max_results = 5
 	print(f"---SEARCHING IN WEB(Using Brave Search API): {query}---")
 
-	brave_search_tool = Custom_BraveSearchResults(
-		max_results=max_results,
-		extra_snippets=True,
-		summary=True,
-	)
-	brave_search_tool_with_fallbacks = brave_search_tool.with_fallbacks([brave_search_tool] * 10)
+	brave_search_tool_with_fallbacks = get_brave_search_tool(max_results=max_results)
 
 	try:
 		search_results = await brave_search_tool_with_fallbacks.ainvoke({'query': query + "."})
@@ -60,7 +54,6 @@ async def brave_search_func(
 			max_retries=5,
 			delay_seconds=45.0,
 		)
-		# extract_raw_contents_results = await _content_extraction_agent.ainvoke({"search_query": query, "search_result": web_results})
 
 		return PAR_SUCCESS(extract_raw_contents_results)
 	except Exception as e:
@@ -69,8 +62,8 @@ async def brave_search_func(
 
 
 if __name__ == '__main__':
-	result = brave_search_func(
-		query="impact of weather conditions on corn yields united states.",
+	result = asyncio.run(brave_search_func(
+		query="GDP rankings by country",
 		max_results=5,
-	)
-	print(result)
+	))
+	print(result.result)
