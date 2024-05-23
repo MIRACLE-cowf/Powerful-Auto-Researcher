@@ -92,7 +92,7 @@ Your role now is to create a perfect section, one of a kind in the world, based 
 </document_writing_guidelines>"""),
         ("human", "{input}"),
     ])
-    fallback_llm = get_anthropic_model(model_name="opus")
+    fallback_llm = get_anthropic_model(model_name="sonnet")
     basic_llm = get_anthropic_model()
     Document_Writer_chain = (
             {

@@ -1,9 +1,11 @@
 from langchain_core.retrievers import BaseRetriever
+from langsmith import traceable
 
 from Single_Chain.MultiQueryChain import DerivedQueries
 
 
-async def search_vector_store(
+@traceable(name="Retrieve Vector DB", run_type="retriever")
+def search_vector_store(
     multi_query: DerivedQueries,
     retriever: BaseRetriever,
     k=3
@@ -11,8 +13,7 @@ async def search_vector_store(
     query_results = {}
     print(f"---RETRIEVING QUERY: {multi_query}---")
     _batch_inputs = prepare_batch_input_data(multi_query)
-    print(_batch_inputs)
-    _batch_results = await retriever.abatch(_batch_inputs)
+    _batch_results = retriever.batch(_batch_inputs)
 
     query_results[multi_query.derived_query_1] = _batch_results[0]
     query_results[multi_query.derived_query_2] = _batch_results[1]

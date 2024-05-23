@@ -2,6 +2,8 @@ from typing import Union, Optional
 
 from langchain_community.document_loaders.arxiv import ArxivLoader
 from langchain_community.document_loaders.youtube import YoutubeLoader
+from langchain_community.tools import WikipediaQueryRun
+from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable
@@ -110,6 +112,7 @@ async def youtube_search_v2(
     try:
         results = await YoutubeSearch(query, max_results=5).to_json()
     except Exception as e:
+        print(f"youtube search error: {str(e)}")
         return PAR_ERROR(str(e))
 
     import json
@@ -143,7 +146,7 @@ async def youtube_search_v2(
             "search_results": youtube_results
         },
         max_retries=5,
-        delay_seconds=45.0,
+        delay_seconds=60.0,
     )
     # youtube_extract_results = await _content_extraction_agent.ainvoke({"search_query": query, "search_result": youtube_results})
     return PAR_SUCCESS(youtube_extract_results)
@@ -190,3 +193,19 @@ async def arxiv_search_v2(
                           f"<extract_result>\n{batch}</extract_result>\n</document>\n\n")
 
     return PAR_SUCCESS(arxiv_results)
+
+
+async def wikipedia_search(
+    query: str,
+    max_results: Optional[int] = None,
+) -> PAR_SUCCESS:
+    print("---SEARCHING IN WIKIPEDIA---")
+    wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+    results = await wikipedia.ainvoke({'query': query})
+    # wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+    # results = wikipedia.run(query)
+    # print(f"---WIKIPEDIA SEARCH RESULT---\n{results}")
+
+    print("---WIKIPEDIA SEARCH DONE---")
+    return PAR_SUCCESS(results)
+

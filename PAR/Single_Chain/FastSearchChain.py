@@ -1,6 +1,7 @@
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel
+from langsmith import traceable
 
 from CustomHelper.Helper import retry_with_delay_async
 from CustomHelper.load_model import get_anthropic_model
@@ -11,9 +12,10 @@ from Tool.Custom_BraveSearchResults import get_brave_search_tool
 from Tool.Custom_TavilySearchResults import get_tavily_search_tool
 
 
+@traceable(name="Fast Search Func")
 async def get_fast_search_result(
 	original_question: str
-):
+) -> str:
 	prompt = ChatPromptTemplate.from_template("""I'm going to give you a document. Then I'm going to ask you a question about it. I'd like you to first write down exact quotes from the document that would help answer the question, and then I'd like you to answer the question using facts from the quoted content.
 
 Here is the document:
@@ -54,23 +56,26 @@ If the question cannot be answered by the document, say so.
 Answer the question immediately without preamble.""")
 
 	llm = get_anthropic_model()
-
-	chain = prompt | llm | StrOutputParser()
+	fallback_llm = llm.with_fallbacks([llm] * 5)
+	chain = prompt | fallback_llm | StrOutputParser()
 
 	brave_search_tool_with_fallbacks = get_brave_search_tool(max_results=None)
 	tavily_search_tool_with_fallbacks = get_tavily_search_tool(max_results=None)
 
 	multiple_search_chain = RunnableParallel(brave=brave_search_tool_with_fallbacks, tavily=tavily_search_tool_with_fallbacks)
-	multiple_search_results = await multiple_search_chain.ainvoke({"query": original_question + "."})
+	multiple_search_results = multiple_search_chain.invoke({"query": original_question})
+
 	web_results = {
 		"brave": _build_brave_results(multiple_search_results['brave']),
 		"tavily": _build_raw_contents_tavily(multiple_search_results['tavily']['results'])
 	}
+
 	_content_extraction_agent = _get_content_extraction_agent()
 	batch_input = [
 		{'search_query': original_question, 'search_result': web_results['brave']},
 		{'search_query': original_question, 'search_result': web_results['tavily']},
 	]
+
 	extract_raw_contents_result = await retry_with_delay_async(
 		chain=_content_extraction_agent,
 		input=batch_input,
@@ -79,14 +84,16 @@ Answer the question immediately without preamble.""")
 		is_batch=True
 	)
 
-	batch_results = "<documents>\n"
-
-	for index, batch in enumerate(extract_raw_contents_result, start=1):
-		batch_results += (f"<document index={index}>\n"
-		                  f"<extract_result>\n{batch}</extract_result>\n</document>\n\n")
-	batch_results += "</documents>\n"
+	batch_results = _build_batch_results(extract_raw_contents_result)
 
 	final_result = chain.invoke({"document": batch_results, "question": original_question})
 	return final_result
 
 
+def _build_batch_results(_extract_raw_contents_result: list):
+	_batch_results = "<documents>\n"
+	for index, batch in enumerate(_extract_raw_contents_result, start=1):
+		_batch_results += (f"<document index={index}>\n"
+		                  f"<extract_result>\n{batch}</extract_result>\n</document>\n\n")
+	_batch_results += "</documents>\n"
+	return _batch_results

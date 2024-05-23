@@ -2,8 +2,9 @@ import re
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langsmith import traceable
 
-from CustomHelper.Helper import get_current_date
+from CustomHelper.Helper import get_current_date, retry_with_delay_async
 from CustomHelper.load_model import get_anthropic_model
 
 
@@ -17,7 +18,8 @@ def _parse_generate_new_question_chain(
 		return generated_prompt
 
 
-async def GenerateNewPromptFunc(
+@traceable(name="func(get_generate_new_prompt)")
+async def get_generate_new_prompt(
 	user_input: str,
 ) -> str:
 	llm = get_anthropic_model(model_name="opus")
@@ -65,8 +67,13 @@ Provide your output immediately, without any additional explanations or apologie
 	_generate_new_question_chain = prompt.partial(current_date=current_date) | llm | StrOutputParser()
 
 	print(f'---ENTER CONVERT NEW QUESTION BY USER QUESTION: {user_input}')
-	new_question = await _generate_new_question_chain.ainvoke({
-		"input": user_input,
-	})
+	new_question = await retry_with_delay_async(
+		chain=_generate_new_question_chain,
+		input={
+			"input": user_input,
+		},
+		max_retries=3,
+		delay_seconds=45.0
+	)
 	generated_new_prompt = _parse_generate_new_question_chain(new_question)
 	return generated_new_prompt

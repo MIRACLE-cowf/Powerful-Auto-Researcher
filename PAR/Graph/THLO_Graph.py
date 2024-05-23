@@ -3,6 +3,7 @@ from typing import TypedDict
 
 from langchain import hub
 from langgraph.graph import StateGraph
+from langsmith import traceable
 
 from CustomHelper.THLO_helper import Thought, HighLevelDocument_Outline, HighLevelDocument_Plan
 from CustomHelper.load_model import get_anthropic_model
@@ -135,8 +136,6 @@ def get_generate_search_query_plans_chain():
     return fallback_chain
 
 
-
-
 class THLO_state(TypedDict):
     original_question: str
     derived_queries: str
@@ -146,25 +145,31 @@ class THLO_state(TypedDict):
     evaluation_criteria: str
 
 
+@traceable(name="THLO Graph #Thought#", run_type="llm")
 async def thought_node(state: THLO_state):
     """Thought stage"""
     print("---THLO STATE: THOUGHT NODE---")
     original_question = state["original_question"]
     derived_queries = state["derived_queries"]
-    thought_result = await get_thought_chain().ainvoke({
+
+    thought_chain = get_thought_chain()
+    thought_result = await thought_chain.ainvoke({
         "original_question": original_question,
         "derived_queries": derived_queries
     })
     return thought_result
 
 
+@traceable(name="THLO Graph #High Level Outline#", run_type="llm")
 async def high_level_outline_node(state: THLO_state):
     """Based on thought result, generate high-level-outline"""
     print('---THLO STATE: HIGH_LEVEL_OUTLINE_NODE---')
     original_question = state["original_question"]
     derived_queries = state["derived_queries"]
     inner_monologue = state['inner_monologue']
-    high_level_outline_result = await get_high_level_outline_chain().ainvoke({
+
+    high_level_outline_chain = get_high_level_outline_chain()
+    high_level_outline_result = await high_level_outline_chain.ainvoke({
         'original_question': original_question,
         'derived_queries': derived_queries,
         'inner_monologue': inner_monologue.as_str(),
@@ -175,6 +180,7 @@ async def high_level_outline_node(state: THLO_state):
     }
 
 
+@traceable(name="THLO Graph #Generate Search Plan#", run_type="llm")
 async def generate_search_query_node(state: THLO_state):
     """Based on thought result, and high-level-outline, generate search query and selected engine.
     It's look like Plan-and-Execute architecture's Plan stage.
@@ -206,6 +212,6 @@ def get_THLO_Graph():
     workflow.add_edge("high_level_outline_node", "generate_search_query")
     workflow.set_entry_point("thought")
     workflow.set_finish_point("generate_search_query")
-    THLO_Graph = workflow.compile().with_config(run_name="Think High Level Outline(THLO)")
+    THLO_Graph = workflow.compile()
     return THLO_Graph
 

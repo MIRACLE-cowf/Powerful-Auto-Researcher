@@ -1,12 +1,9 @@
 import json
-from typing import Optional
 
 from langchain import hub
 from langchain.retrievers import ParentDocumentRetriever
 from langchain_community.document_loaders.arxiv import ArxivLoader
 from langchain_community.document_loaders.youtube import YoutubeLoader
-from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
-from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.stores import BaseStore
 
@@ -182,16 +179,3 @@ def arXiv_search(
 #     return arxiv_results
 
 
-async def wikipedia_search(
-    query: str,
-    max_results: Optional[int] = None,
-) -> str:
-    print("---SEARCHING IN WIKIPEDIA---")
-    wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
-    results = await wikipedia.ainvoke({'query': query})
-    # wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
-    # results = wikipedia.run(query)
-    # print(f"---WIKIPEDIA SEARCH RESULT---\n{results}")
-
-    print("---WIKIPEDIA SEARCH DONE---")
-    return results

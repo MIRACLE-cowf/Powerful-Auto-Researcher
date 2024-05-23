@@ -1,10 +1,12 @@
 import asyncio
+import pickle
 import re
 from typing import TypedDict, Dict, Any, List
 
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_text_splitters import CharacterTextSplitter
 from langgraph.graph import StateGraph, END
+from langsmith import traceable
 
 from Agent_Team.Member.Common_Search_AgentGraph import TavilySearchAgentGraph
 from Agent_Team.Project_Manager_Agent import get_pm_graph, get_pm_graph_mermaid
@@ -15,9 +17,9 @@ from Graph.THLO_Graph import get_THLO_Graph
 from Single_Chain.ConclustionChain import conclusion_chain
 from Single_Chain.FastSearchChain import get_fast_search_result
 from Single_Chain.GenerateFinalAnswer import get_generate_final_answer_chain
-from Single_Chain.GenerateNewPrompt import GenerateNewPromptFunc
+from Single_Chain.GenerateNewPrompt import get_generate_new_prompt
 from Single_Chain.GradingDocumentsChain import grading_documents_chain
-from Single_Chain.MultiQueryChain import multi_query_chain, DerivedQueries
+from Single_Chain.MultiQueryChain import get_multi_query_for_retrieve, DerivedQueries
 from Single_Chain.Retrieve_Vector_DB import search_vector_store
 from Util.PAR_Helper import setup_new_document_format, parse_result_to_document_format, \
     save_document_to_md
@@ -47,10 +49,11 @@ class RAG_State(TypedDict):
     keys: Dict[str, Any]
 
 
+@traceable(name="MAIN - Generate New Prompt(Single Chain)")
 async def generate_new_prompt_node(state: RAG_State):
     print("---MAIN STATE: GENERATE NEW PROMPT IN---")
     original_query = state["user_question"]
-    new_question_prompt = await GenerateNewPromptFunc(user_input=original_query)
+    new_question_prompt = await get_generate_new_prompt(user_input=original_query)
     print("---MAIN STATE: GENERATE NEW PROMPT OUT---")
 
     return {
@@ -58,10 +61,11 @@ async def generate_new_prompt_node(state: RAG_State):
     }
 
 
+@traceable(name="MAIN - Multi Query Generator(Single Chain)")
 async def multi_query_generator_node(state: RAG_State):
     print("---MAIN STATE: MULTI QUERY GENERATOR IN---")
     original_query = state["original_query"]
-    multi_query_result = await multi_query_chain(model=get_anthropic_model()).ainvoke({"question": original_query})
+    multi_query_result = await get_multi_query_for_retrieve(question=original_query)
     print("---MAIN STATE: MULTI QUERY GENERATOR OUT---")
 
     return {
@@ -69,10 +73,11 @@ async def multi_query_generator_node(state: RAG_State):
     }
 
 
-async def retrieve_node(state: RAG_State):
+@traceable(name="MAIN - Retrieve Vector DB(Retriever)")
+def retrieve_node(state: RAG_State):
     print("---MAIN STATE: RETRIEVE IN VECTOR DB---")
     multi_queries = state['derived_queries']
-    retrieve_result = await search_vector_store(
+    retrieve_result = search_vector_store(
         multi_query=multi_queries,
         retriever=parent_retriever
     )
@@ -85,7 +90,9 @@ async def retrieve_node(state: RAG_State):
     }
 
 
-async def grade_document(state: RAG_State):
+@traceable(name="MAIN - Grade Document(Single Chain)")
+def grade_document(state: RAG_State):
+    """Need code refactoring"""
     print("---MAIN STATE: GRADING DOCUMENTS START---")
     state_dict = state["keys"]
     retrieve_result = state_dict['retrieve_result']
@@ -113,7 +120,7 @@ async def grade_document(state: RAG_State):
     for new_query, documents in retrieve_result.items():
         doc_str = generate_doc_result(documents)
 
-        grade_result = await grading_chain.ainvoke({
+        grade_result = grading_chain.invoke({
             "question": new_query,
             "documents": doc_str
         })
@@ -138,6 +145,7 @@ async def grade_document(state: RAG_State):
     }
 
 
+@traceable(name="MAIN - Decide to Generate(Func)")
 def decide_to_generate(state: RAG_State):
     print("---MAIN STATE: DECIDE to GENERATE---")
     state_dict = state["keys"]
@@ -158,6 +166,7 @@ def decide_to_generate(state: RAG_State):
         return "generate"
 
 
+@traceable(name="MAIN - THLO Graph(LangGraph)")
 async def think_high_level_outline_node(state: RAG_State):
     print('---MAIN STATE: THINK HIGH LEVEL OUTLINE GRAPH START---')
     state_dict = state["keys"]
@@ -179,6 +188,7 @@ async def think_high_level_outline_node(state: RAG_State):
     }
 
 
+@traceable(name="MAIN - Fast Search(Single Chain + Tools)")
 async def fast_search(state: RAG_State):
     print("---MAIN STATE: FAST SEARCH IN---")
     fast_search_results = await get_fast_search_result(state["original_query"])
@@ -189,6 +199,7 @@ async def fast_search(state: RAG_State):
     }
 
 
+@traceable(name="MAIN - Parallel Execution")
 async def parallel_execution_node(state: RAG_State):
     print("---MAIN STATE: PARALLEL EXECUTION IN---")
     fast_search_task = asyncio.create_task(fast_search(state))
@@ -217,8 +228,12 @@ async def parallel_execution_node(state: RAG_State):
     }
 
 
+@traceable(name="MAIN - Composable Search")
 async def composable_search_node(state: RAG_State):
     print('---MAIN STATE: COMPOSABLE SEARCH NODE---')
+    # with open('state.pkl', 'wb') as f:
+    #     pickle.dump(state, f)
+
     state_dict = state["keys"]
     generation_result = state_dict["high_level_outline"]
     original_question = state["original_query"]
@@ -238,6 +253,7 @@ async def composable_search_node(state: RAG_State):
 
     search_graph_batch_input = prepare_batch_input_data(sections[:-1])
     project_manager_graph = get_pm_graph()
+
     print('---AGENT BATCH START---')
     # (test)Now we are going use batch
     _search_graph_batch_results = await project_manager_graph.abatch(search_graph_batch_input, {'recursion_limit': 100})
@@ -276,12 +292,21 @@ async def composable_search_node(state: RAG_State):
     }
 
 
+async def test_composable_search_node():
+    with open('state.pkl', 'rb') as f:
+        state = pickle.load(f)
+
+    result = await composable_search_node(state)
+    print(result)
+
+
+@traceable(name="MAIN - Generate Final Answer", run_type="llm")
 async def generate(state: RAG_State):
     print("---GENERATE---")
-    # print(f"state: {state}")
     state_dict = state["keys"]
     user_question = state["user_question"]
     question = state["original_query"]
+
     documents = state_dict.get("grading_results", {})
     document_title = state.get("document_title", "")
     full_documents_display = state_dict.get("full_document_draft_display", "")
@@ -439,3 +464,4 @@ def get_all_graph():
 if __name__ == "__main__":
     # get_all_graph()
     asyncio.run(run_graph())
+    # asyncio.run(test_composable_search_node())

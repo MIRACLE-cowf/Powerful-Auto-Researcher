@@ -85,6 +85,7 @@ class Custom_BraveSearchAPIWrapper(BaseModel):
 							"summary_search": summary
 						}
 					except Exception as e:
+						print(f"BraveSearchResult occur error! Detail: {str(e)}")
 						raise PAR_ERROR(str(e))
 
 				return {

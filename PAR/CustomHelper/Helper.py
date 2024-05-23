@@ -7,7 +7,6 @@ from langchain_core.documents import Document
 from langchain_core.runnables import Runnable, RunnableSerializable
 
 from CustomHelper.Custom_Error_Handler import PAR_ERROR
-from CustomHelper.load_model import get_anthropic_model
 
 
 def get_current_date():
@@ -85,10 +84,9 @@ async def retry_with_delay_async(
     chain: RunnableSerializable,
     input: Union[dict | list],
     max_retries: int = 5,
-    delay_seconds: float = 30.0,
+    delay_seconds: float = 45.0,
     is_batch: bool = False,
 ) -> Any:
-    fallback_llm = get_anthropic_model(model_name="opus")
     for attempt in range(max_retries):
         try:
             if is_batch is True:
