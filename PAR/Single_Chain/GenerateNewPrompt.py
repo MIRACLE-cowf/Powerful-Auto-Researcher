@@ -58,6 +58,7 @@ What is the capital city of France? Please provide a concise overview of the cit
 - Translate the question into English if needed, and output the translation in <translated_question> tags
 - Identify and output the key information in <key_info> tags
 - Generate and output the new prompt in English within <generated_prompt> tags
+- The newly generated prompt should be a maximum of 350 characters in total and written in less than 45 words.
 </restrictions>
 Provide your output immediately, without any additional explanations or apologies.
 """),

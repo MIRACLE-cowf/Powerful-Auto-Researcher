@@ -90,9 +90,9 @@ async def retry_with_delay_async(
     for attempt in range(max_retries):
         try:
             if is_batch is True:
-                return await chain.abatch(inputs=input)
+                return await chain.abatch(inputs=input, config={'recursion_limit': 100})
             else:
-                return await chain.ainvoke(input=input)
+                return await chain.ainvoke(input=input, config={'recursion_limit': 100})
 
         except BadRequestError as e:
             error_message = str(e)

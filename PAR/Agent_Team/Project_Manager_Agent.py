@@ -175,7 +175,7 @@ async def tavily_agent_node(state: AgentState) -> dict:
     print(f"---{state['order']} PM AGENT CALLED TAVILY AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     try:
-        tavily_agent_result = await PAR_Team_Member_Agent_Tavily.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]})
+        tavily_agent_result = await PAR_Team_Member_Agent_Tavily.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
         extract_tavily_agent_result = extract_result(tavily_agent_result["agent_outcome"].return_values["output"])
         tavily_search_result = transform_search_result(search_engine="Tavily", search_result=extract_tavily_agent_result)
         return {
@@ -194,7 +194,7 @@ async def brave_agent_node(state: AgentState) -> dict:
     print(f"---{state['order']} PM AGENT CALLED BRAVE AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     try:
-        brave_agent_result = await PAR_Team_Member_Agent_Brave.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]})
+        brave_agent_result = await PAR_Team_Member_Agent_Brave.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
         extract_brave_agent_result = extract_result(brave_agent_result["agent_outcome"].return_values["output"])
         brave_search_result = transform_search_result(search_engine="BraveSearch", search_result=extract_brave_agent_result)
         return {
@@ -213,7 +213,7 @@ async def wikipedia_agent_node(state: AgentState) -> dict:
     print(f"---{state['order']} PM AGENT CALLED WIKIPEDIA AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     try:
-        wikipedia_agent_result = await PAR_Team_Member_Agent_Wikipedia.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]})
+        wikipedia_agent_result = await PAR_Team_Member_Agent_Wikipedia.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
         extract_wikipedia_agent_result = extract_result(wikipedia_agent_result["agent_outcome"].return_values["output"])
         wikipedia_search_result = transform_search_result(search_engine="Wikipedia",
                                                           search_result=extract_wikipedia_agent_result)
@@ -233,7 +233,7 @@ async def youtube_agent_node(state: AgentState) -> dict:
     print(f"---{state['order']} PM AGENT CALLED YOUTUBE AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     try:
-        youtube_agent_result = await PAR_Team_Member_Agent_Youtube.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]})
+        youtube_agent_result = await PAR_Team_Member_Agent_Youtube.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
         extract_youtube_agent_result = extract_result(youtube_agent_result["agent_outcome"].return_values["output"])
         youtube_search_result = transform_search_result(search_engine="Youtube", search_result=extract_youtube_agent_result)
         return {
@@ -252,7 +252,7 @@ async def arXiv_agent_node(state: AgentState) -> dict:
     print(f"---{state['order']} PM AGENT CALLED ARXIV AGENT---")
     messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
     try:
-        arxiv_agent_result = await PAR_Team_Member_Agent_ArXiv.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]})
+        arxiv_agent_result = await PAR_Team_Member_Agent_ArXiv.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
         extract_arxiv_agent_result = extract_result(arxiv_agent_result["agent_outcome"].return_values["output"])
         arxiv_search_result = transform_search_result(search_engine="ArXiv", search_result=extract_arxiv_agent_result)
         return {

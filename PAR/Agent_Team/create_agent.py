@@ -43,7 +43,7 @@ def select_prompt_template(agent_specific_role: str) -> dict:
 
 
 def create_agent(llm: ChatAnthropic, tool: BaseTool, agent_specific_role: str):
-    fallback_llm = get_anthropic_model(model_name="sonnet")
+    fallback_llm = get_anthropic_model(model_name="opus")
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a seasoned researcher agent who has been conducting research using the {search_engine} Search API.
 
@@ -130,7 +130,7 @@ Overall Insights:
         MessagesPlaceholder(variable_name="agent_scratchpad")
     ])
     search_template = select_prompt_template(agent_specific_role=agent_specific_role)
-    run_llm = llm.bind_tools(tools=[tool]).with_fallbacks([fallback_llm.bind_tools(tools=[tool])] * 5)
+    run_llm = llm.bind_tools(tools=[tool]).with_fallbacks([fallback_llm.bind_tools(tools=[tool])] * 3)
     agent_chain = (
         {
             "input": lambda x: x["input"],

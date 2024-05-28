@@ -30,7 +30,7 @@ async def agent_outcome_checker(
         elif isinstance(agent_outcome, AgentFinish):
             if not agent_outcome.return_values["output"]:
                 print(f"agent outcome is {agent_outcome.return_values['output']}")
-                await asyncio.sleep(10)  # 5초 대기 후 다시 시도
+                await asyncio.sleep(10)  # 10초 대기 후 다시 시도
                 continue
             return {"agent_outcome": agent_outcome}
         else:
