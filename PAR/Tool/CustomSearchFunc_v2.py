@@ -2,11 +2,13 @@ from typing import Union, Optional
 
 from langchain_community.document_loaders.arxiv import ArxivLoader
 from langchain_community.document_loaders.youtube import YoutubeLoader
+from langchain_community.retrievers import AskNewsRetriever
 from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable
+from langsmith import traceable
 
 from CustomHelper.Custom_Error_Handler import PAR_SUCCESS, PAR_ERROR
 from CustomHelper.Helper import retry_with_delay_async
@@ -102,6 +104,7 @@ def transform_raw_content(index: int, raw_content: str) -> str:
     return f"<raw_content_{index}>\n{raw_content}\n</raw_content_{index}>\n\n"
 
 
+@traceable(name="YouTube Search", run_type="tool")
 async def youtube_search_v2(
     query: str,
     max_results: Optional[int] = None,
@@ -152,6 +155,7 @@ async def youtube_search_v2(
     return PAR_SUCCESS(youtube_extract_results)
 
 
+@traceable(name="ArXiv Search", run_type="tool")
 async def arxiv_search_v2(
     query: str,
     max_results: Optional[int] = None,
@@ -195,6 +199,7 @@ async def arxiv_search_v2(
     return PAR_SUCCESS(arxiv_results)
 
 
+@traceable(name="Wikipedia", run_type="tool")
 async def wikipedia_search(
     query: str,
     max_results: Optional[int] = None,
@@ -209,3 +214,19 @@ async def wikipedia_search(
     print("---WIKIPEDIA SEARCH DONE---")
     return PAR_SUCCESS(results)
 
+
+@traceable(name="AskNews", run_type="tool")
+async def asknews_search(
+    query: str,
+    max_results: Optional[int] = None,
+) -> PAR_SUCCESS:
+    print("---SEARCHING IN ASKNEWS---")
+    if max_results is None:
+        max_results = 3
+    retriever = AskNewsRetriever(k=max_results)
+    docs = await retriever.ainvoke(query)
+    _pretty_result = ""
+    for doc in docs:
+        _pretty_result += doc.page_content + "\n\n"
+
+    return PAR_SUCCESS(_pretty_result)

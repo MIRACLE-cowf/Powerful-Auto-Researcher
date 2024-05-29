@@ -3,7 +3,6 @@ import pickle
 import re
 from typing import TypedDict, Dict, Any, List
 
-from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_text_splitters import CharacterTextSplitter
 from langgraph.graph import StateGraph, END
 from langsmith import traceable
@@ -27,15 +26,15 @@ from Util.Retriever_setup import parent_retriever
 from Util.console_controller import print_warning_message, clear_console, print_see_you_again
 
 
-class PAR_Final_RespondSchema(BaseModel):
-    """This tool allows you to let the user know your answer."""
-    background: str = Field(description="Write main background based on provided documents")
-    introduction: str = Field(description="Write main introduction based on provided documents")
-    excerpts: str = Field(description="Write some important excerpts from the provided documents")
-    insights: str = Field(description="Write your thoughts and insights based on provided documents")
-    direct_response: str = Field(description="Write your final direct response based on provided documents")
-    conclusion: str = Field(description="Write your conclusion based on provided documents")
-    any_helpful: str = Field(description="If there is any useful or helpful information that can help the user in the future based on the provided documents.")
+# class PAR_Final_RespondSchema(BaseModel):
+#     """This tool allows you to let the user know your answer."""
+#     background: str = Field(description="Write main background based on provided documents")
+#     introduction: str = Field(description="Write main introduction based on provided documents")
+#     excerpts: str = Field(description="Write some important excerpts from the provided documents")
+#     insights: str = Field(description="Write your thoughts and insights based on provided documents")
+#     direct_response: str = Field(description="Write your final direct response based on provided documents")
+#     conclusion: str = Field(description="Write your conclusion based on provided documents")
+#     any_helpful: str = Field(description="If there is any useful or helpful information that can help the user in the future based on the provided documents.")
 
 
 class RAG_State(TypedDict):
@@ -265,7 +264,7 @@ async def composable_search_node(state: RAG_State):
     for order in sorted(ordered_results.keys()):
         print(f'---ORDER: {order}---')
         search_graph_result = ordered_results[order]
-        print(search_graph_result)
+        # print(search_graph_result)
 
         if search_graph_result["final_section_document"]:
             document = search_graph_result["final_section_document"]
@@ -435,19 +434,15 @@ async def run_graph():
 
         result = await app.ainvoke(inputs)
         print(result)
-        print("####DOCUMENT####")
-        print(result['keys']['full_documents'])
-        print("----------------------------")
+        if result["keys"].get('full_documents'):
+            print("####DOCUMENT####")
+            print(result['keys']['full_documents'])
+            print("----------------------------")
 
-        final_result = result['keys']['generation']
-        print(f"Final Result: \n\n{final_result}")
-        # print(f"Final Result: {final_result.direct_response}\n"
-        #       f"\n###BACKGROUND###\n{final_result.background}\n"
-        #       f"###INTRODUCTION###\n{final_result.introduction}\n"
-        #       f"###EXCERPTS###\n{final_result.excerpts}\n"
-        #       f"###INSIGHTS###\n{final_result.insights}\n"
-        #       f"###CONCLUSTION###\n{final_result.conclusion}\n"
-        #       f"###ANY_HELPFUL###\n{final_result.any_helpful}\n")
+            final_result = result['keys']['generation']
+            print(f"Final Result: \n\n{final_result}")
+        else:
+            print(result["fast_search_results"])
 
     else:
         clear_console()

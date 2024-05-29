@@ -33,6 +33,10 @@ def select_prompt_template(agent_specific_role: str) -> dict:
                                      "This makes it ideal for queries where a diversity of perspectives and the most current information is desired. Brave Search is also a strong choice when you want a balance of both reliable, high-quality sources and more informal user-generated content like blog posts, social media, forums etc. It provides a well-rounded view. "
                                      "In addition to webpages, Brave Search is effective at finding relevant images, videos, news articles, and other media related to the search. It's useful for things like comprehensive overviews of topics, research on current affairs and pop culture, comparison of different products/services, discovering a range of opinions on issues, and finding real-world examples or applications of concepts.")
         search_query_tip = "For the most relevant results on Brave Search, use specific but concise keyphrases that capture the core elements of your query. Including 1-2 of the most essential keywords is usually sufficient."
+    elif agent_specific_role.lower() == 'asknews':
+        search_engine = "AskNews"
+        search_engine_description = ("Use AskNews when you need the most up-to-date information on current events, breaking news, and trending stories from around the world. AskNews leverages advanced AI techniques to process and index over 300,000 news articles per day from 50,000 diverse sources across 100+ countries and 13 languages.")
+        search_query_tip = "Provide as much context as possible about the news topic you're interested in. Mentioning key entities, locations, and timeframes can help narrow down the search."
     else:
         raise ValueError(f"Unrecognized agent specifier '{agent_specific_role}'")
     return {

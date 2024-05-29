@@ -5,6 +5,7 @@ import requests
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
+from langsmith import traceable
 
 from CustomHelper.Custom_Error_Handler import PAR_ERROR, PAR_SUCCESS
 from CustomHelper.Helper import retry_with_delay_async
@@ -192,6 +193,7 @@ def _build_raw_contents_tavily(docs: list) -> str:
 	return raw_contents
 
 
+@traceable(name="Tavily Search", run_type="tool")
 async def tavily_search_func(
 	query: str,
 	max_results: Optional[int] = None,

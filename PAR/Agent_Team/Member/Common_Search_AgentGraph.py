@@ -13,8 +13,9 @@ from CustomHelper.Agent_outcome_checker import agent_outcome_checker
 from CustomHelper.Custom_Error_Handler import PAR_ERROR, PAR_SUCCESS
 from CustomHelper.load_model import get_anthropic_model
 from Single_Chain.EvaluateSearchResultsChain import get_evaluate_search_results
+from Tool.CustomAskNewsTool import Custom_AskNewsResults
 from Tool.CustomBraveSearchFunc import brave_search_func
-from Tool.CustomSearchFunc_v2 import arxiv_search_v2, youtube_search_v2, wikipedia_search
+from Tool.CustomSearchFunc_v2 import arxiv_search_v2, youtube_search_v2, wikipedia_search, asknews_search
 from Tool.CustomSearchTool import Custom_arXivSearchTool, Custom_WikipediaQueryRun, Custom_YouTubeSearchTool
 from Tool.CustomTavilySearchFunc import tavily_search_func
 from Tool.Custom_BraveSearchResults import Custom_BraveSearchResults
@@ -162,3 +163,8 @@ class YoutubeSearchAgentGraph(SearchAgentGraph):
 		super().__init__(Custom_YouTubeSearchTool(), "Youtube")
 		self.search_func = youtube_search_v2
 
+
+class AskNewsSearchAgentGraph(SearchAgentGraph):
+	def __init__(self):
+		super().__init__(Custom_AskNewsResults(), agent_specific_role="AskNews")
+		self.search_func = asknews_search

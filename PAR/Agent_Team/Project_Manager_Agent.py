@@ -5,10 +5,11 @@ from langchain_core.agents import AgentAction, AgentFinish
 from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.pydantic_v1 import BaseModel, Field
+from langchain_core.runnables import Runnable
 from langgraph.graph import StateGraph
 from langsmith import traceable
 
-from Agent_Team.Member.Common_Search_AgentGraph import TavilySearchAgentGraph, BraveSearchAgentGraph, WikipediaSearchAgentGraph, YoutubeSearchAgentGraph, ArxivSearchAgentGraph
+from Agent_Team.Member.Common_Search_AgentGraph import TavilySearchAgentGraph, BraveSearchAgentGraph, WikipediaSearchAgentGraph, YoutubeSearchAgentGraph, ArxivSearchAgentGraph, AskNewsSearchAgentGraph
 from Agent_Team.Member.PAR_Document_Writer import get_document_generation_agent
 from CustomHelper.Anthropic_helper import format_to_anthropic_tool_messages
 from CustomHelper.Custom_AnthropicAgentOutputParser_2 import AnthropicAgentOutputParser
@@ -16,17 +17,24 @@ from CustomHelper.Helper import retry_with_delay_async
 from CustomHelper.load_model import get_anthropic_model
 from Util.PAR_Helper import extract_result
 
-members = ["tavily_agent", "document_agent", "wikipedia_agent", "youtube_agent", "arxiv_agent", "brave_agent"]
+members = ["tavily_agent", "document_agent", "wikipedia_agent", "youtube_agent", "arxiv_agent", "brave_agent", "asknews_agent"]
 
 
 class route(BaseModel):
-    """Select the next agent ONLY ONE.
-    Remember the next agent can't access provided section. So you MUST provide specific and clear instructions to next agent."""
+    """Select the next agent ONLY ONE that perform action.
+    Remember the next agent can't access provided section. So you MUST provide specific and clear instructions to the next agent."""
     next: Literal[
-        "tavily_agent", "document_agent", "wikipedia_agent", "youtube_agent", "arxiv_agent", "brave_agent", "FINISH"] = Field(...,
-                                                                                                               description="Select the next agent ONLY ONE or 'FINISH'. 'FINISH' means you are team finish all job and ready to return result.")
+        "tavily_agent",
+        "document_agent",
+        "wikipedia_agent",
+        "youtube_agent",
+        "arxiv_agent",
+        "brave_agent",
+        "asknews_agent",
+        "FINISH",
+    ] = Field(..., description="Select the next agent ONLY ONE that perform action or 'FINISH'. 'FINISH' means you are team finish all job and ready to return result.")
     instructions: str = Field(...,
-                              description="Provide specific, clear, and detailed instructions that next agent what should do.")
+                              description="Provide specific, clear, and detailed instructions that the selected agent what should do.")
 
 
 def _get_PM_agent():
@@ -49,6 +57,7 @@ You will be working with the following team members:
 - youtube_agent: Specialized search agent for YouTube
 - arxiv_agent: Specialized search agent for arXiv
 - brave_agent: Specialized search agent using Brave Search API
+- asknews_agent: Specialized search agent for News using AskNews API
 
 Note that only the document_agent is responsible for writing the document, while all other agents are specialized in conducting searches.
 </team_members>
@@ -56,7 +65,7 @@ Note that only the document_agent is responsible for writing the document, while
 <instructions>
 1. Thoroughly analyze the high-level information about the section to identify the necessary search engines and queries.
 
-2. Provide clear guidelines and specific search requests to the designated search agent.
+2. Provide clear instruction and specific search requests to the designated search agent using 'route' tool.
 - Each search agent will return results selected based on strict 'search evaluation criteria'.
 - If the results are insufficient, provide detailed feedback to the agent and write instructions requesting additional searches.
 
@@ -111,7 +120,7 @@ class AgentState(TypedDict):
     final_section_document: str
 
 
-def transform_search_result(search_engine: str, search_result: str) -> str:
+def _transform_search_result(search_engine: str, search_result: str) -> str:
     return f"<{search_engine}_search_result>\n{search_result}\n</{search_engine}_search_result>"
 
 
@@ -150,6 +159,27 @@ def _check_pm_agent_result(_pm_result: Any, _final_section_document: str):
         raise ValueError(f"Unexpected agent output: {_pm_result}, type: {type(_pm_result)}")
 
 
+async def _run_search_agent(
+    state: AgentState,
+    search_agent: Runnable,
+    search_engine: str,
+) -> dict:
+    print(f"---{state['order']} PM AGENT CALLED {search_engine.upper()} AGENT---")
+    messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
+    try:
+        agent_result = await search_agent.ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
+        extract_agent_result = extract_result(agent_result["agent_outcome"].return_values["output"])
+        search_result = _transform_search_result(search_engine=search_engine, search_result=extract_agent_result)
+        return {
+            "intermediate_steps": [(state["agent_output"], extract_agent_result)],
+            "search_result"     : state["search_result"] + "\n\n" + search_result
+        }
+    except Exception as e:
+        print(f"Error Occur at '{search_engine.lower()} agent node'. Detail: {str(e)}")
+        print(f"{search_engine} agent result: {agent_result}")
+        raise Exception(e)
+
+
 @traceable(name="Run PM Agent", run_type="llm")
 async def run_pm_agent(state: AgentState) -> dict:
     print("### PM AGENT RUN ###")
@@ -169,100 +199,40 @@ async def run_pm_agent(state: AgentState) -> dict:
     )
 
 
+@traceable(name="AskNews Agent")
+async def asknews_agent_node(state: AgentState) -> dict:
+    PAR_Team_Member_Agent_AskNews = AskNewsSearchAgentGraph()
+    return await _run_search_agent(state, PAR_Team_Member_Agent_AskNews.get_search_agent_graph(), "AskNews")
+
+
 @traceable(name="Tavily Agent")
 async def tavily_agent_node(state: AgentState) -> dict:
     PAR_Team_Member_Agent_Tavily = TavilySearchAgentGraph()
-    print(f"---{state['order']} PM AGENT CALLED TAVILY AGENT---")
-    messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
-    try:
-        tavily_agent_result = await PAR_Team_Member_Agent_Tavily.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
-        extract_tavily_agent_result = extract_result(tavily_agent_result["agent_outcome"].return_values["output"])
-        tavily_search_result = transform_search_result(search_engine="Tavily", search_result=extract_tavily_agent_result)
-        return {
-            "intermediate_steps": [(state["agent_output"], extract_tavily_agent_result)],
-            "search_result"     : state["search_result"] + "\n\n" + tavily_search_result
-        }
-    except Exception as e:
-        print(f"Error Occur at 'tavily agent node'. Detail: {str(e)}")
-        print(f"Tavily agent result: {tavily_agent_result}")
-        raise Exception(e)
+    return await _run_search_agent(state, PAR_Team_Member_Agent_Tavily.get_search_agent_graph(), "Tavily")
 
 
 @traceable(name="Brave Agent")
 async def brave_agent_node(state: AgentState) -> dict:
     PAR_Team_Member_Agent_Brave = BraveSearchAgentGraph()
-    print(f"---{state['order']} PM AGENT CALLED BRAVE AGENT---")
-    messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
-    try:
-        brave_agent_result = await PAR_Team_Member_Agent_Brave.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
-        extract_brave_agent_result = extract_result(brave_agent_result["agent_outcome"].return_values["output"])
-        brave_search_result = transform_search_result(search_engine="BraveSearch", search_result=extract_brave_agent_result)
-        return {
-            "intermediate_steps": [(state["agent_output"], extract_brave_agent_result)],
-            "search_result"     : state["search_result"] + "\n\n" + brave_search_result
-        }
-    except Exception as e:
-        print(f"Error Occur at 'brave agent node'. Detail: {str(e)}")
-        print(f"brave agent result: {brave_agent_result}")
-        raise Exception(e)
+    return await _run_search_agent(state, PAR_Team_Member_Agent_Brave.get_search_agent_graph(), "BraveSearch")
 
 
 @traceable(name="Wikipedia Agent")
 async def wikipedia_agent_node(state: AgentState) -> dict:
     PAR_Team_Member_Agent_Wikipedia = WikipediaSearchAgentGraph()
-    print(f"---{state['order']} PM AGENT CALLED WIKIPEDIA AGENT---")
-    messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
-    try:
-        wikipedia_agent_result = await PAR_Team_Member_Agent_Wikipedia.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
-        extract_wikipedia_agent_result = extract_result(wikipedia_agent_result["agent_outcome"].return_values["output"])
-        wikipedia_search_result = transform_search_result(search_engine="Wikipedia",
-                                                          search_result=extract_wikipedia_agent_result)
-        return {
-            "intermediate_steps": [(state["agent_output"], extract_wikipedia_agent_result)],
-            "search_result"     : state["search_result"] + "\n\n" + wikipedia_search_result
-        }
-    except Exception as e:
-        print(f"Error Occur at 'wikipedia agent node'. Detail: {str(e)}")
-        print(f"wikipedia agent result: {wikipedia_agent_result}")
-        raise Exception(e)
+    return await _run_search_agent(state, PAR_Team_Member_Agent_Wikipedia.get_search_agent_graph(), "Wikipedia")
 
 
 @traceable(name="YouTube Agent")
 async def youtube_agent_node(state: AgentState) -> dict:
     PAR_Team_Member_Agent_Youtube = YoutubeSearchAgentGraph()
-    print(f"---{state['order']} PM AGENT CALLED YOUTUBE AGENT---")
-    messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
-    try:
-        youtube_agent_result = await PAR_Team_Member_Agent_Youtube.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
-        extract_youtube_agent_result = extract_result(youtube_agent_result["agent_outcome"].return_values["output"])
-        youtube_search_result = transform_search_result(search_engine="Youtube", search_result=extract_youtube_agent_result)
-        return {
-            "intermediate_steps": [(state["agent_output"], extract_youtube_agent_result)],
-            "search_result"     : state["search_result"] + "\n\n" + youtube_search_result
-        }
-    except Exception as e:
-        print(f"Error Occur at 'youtube agent node'. Detail: {str(e)}")
-        print(f"youtube agent result: {youtube_agent_result}")
-        raise Exception(e)
+    return await _run_search_agent(state, PAR_Team_Member_Agent_Youtube.get_search_agent_graph(), "Youtube")
 
 
 @traceable(name="Arxiv Agent")
 async def arXiv_agent_node(state: AgentState) -> dict:
     PAR_Team_Member_Agent_ArXiv = ArxivSearchAgentGraph()
-    print(f"---{state['order']} PM AGENT CALLED ARXIV AGENT---")
-    messages = HumanMessage(content=f"Hi! I'm PAR Project Manager Agent! {state['instructions']}")
-    try:
-        arxiv_agent_result = await PAR_Team_Member_Agent_ArXiv.get_search_agent_graph().ainvoke({"input": messages.content, "section_basic_info": state["section_basic_info"]}, {'recursion_limit': 100})
-        extract_arxiv_agent_result = extract_result(arxiv_agent_result["agent_outcome"].return_values["output"])
-        arxiv_search_result = transform_search_result(search_engine="ArXiv", search_result=extract_arxiv_agent_result)
-        return {
-            "intermediate_steps": [(state["agent_output"], extract_arxiv_agent_result)],
-            "search_result"     : state["search_result"] + "\n\n" + arxiv_search_result
-        }
-    except Exception as e:
-        print(f"Error Occur at 'arxiv agent node'. Detail: {str(e)}")
-        print(f"arxiv agent result: {arxiv_agent_result}")
-        raise Exception(e)
+    return await _run_search_agent(state, PAR_Team_Member_Agent_ArXiv.get_search_agent_graph(), "ArXiv")
 
 
 @traceable(name="Document Generate Agent", run_type="llm")
@@ -304,6 +274,7 @@ def get_pm_graph():
     workflow.add_node("wikipedia_agent", wikipedia_agent_node)
     workflow.add_node("youtube_agent", youtube_agent_node)
     workflow.add_node("arxiv_agent", arXiv_agent_node)
+    workflow.add_node("asknews_agent", asknews_agent_node)
     workflow.add_node("response", response_node)
 
     for member in members:

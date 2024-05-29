@@ -1,6 +1,8 @@
 import os
 import re
 
+from langsmith import traceable
+
 from Tool.Respond_Agent_Section_Tool import FinalResponse_SectionAgent
 
 
@@ -78,6 +80,7 @@ def setup_new_document_format(document_title: str, document_description: str, or
     return f"# {document_title}\n\n## {original_question}\n\n{document_description}\n\n\n"
 
 
+@traceable(name="SAVE DOCUMENT", run_type="tool")
 async def save_document_to_md(full_document: str, document_title: str):
     """After confirming with the user whether to save the file, creates a markdown file with the document_title as the filename inside the src folder
     Args:
@@ -103,5 +106,8 @@ async def save_document_to_md(full_document: str, document_title: str):
             file.write(full_document)
 
         print(f"DOCUMENT SAVED AS {file_name} SUCCESSFULLY")
+        return {
+            "file_name": file_name
+        }
     else:
         print("DOCUMENT NOT SAVED.")
