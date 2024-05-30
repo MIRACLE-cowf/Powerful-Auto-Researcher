@@ -154,6 +154,8 @@ Which Anthropic model should I use?
 
 
 ## ✅ Update Log ✅  
+### 2024.05.30
+- Huge Update. Will be List-Up the update log.
 ### 2024.04.11
 - Now you can find new test cases that have been added after each update in the issue tracker!
 ### 2024.04.10  
