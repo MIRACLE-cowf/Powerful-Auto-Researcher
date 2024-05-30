@@ -1,14 +1,16 @@
-from typing import Sequence, Tuple, List
+from typing import Sequence, Tuple, List, Union
+
 from langchain_core.agents import AgentAction
 from langchain_core.messages import AIMessage, ToolMessage, BaseMessage
 
-from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentAction
-
+# from CustomHelper.Custom_AnthropicAgentOutputParser import AnthropicAgentAction
+from CustomHelper.Custom_AnthropicAgentOutputParser_2 import AnthropicAgentAction
+from CustomHelper.Custom_Error_Handler import PAR_ERROR, PAR_SUCCESS
 
 
 # WE can use basically same as LangChain OpenAI's 'format_to_openai_tool_message', but little bit custom is there
 def _create_tool_message(
-    agent_action: AnthropicAgentAction, observation: str
+    agent_action: AnthropicAgentAction, observation: Union[PAR_SUCCESS, PAR_ERROR, str]
 ) -> ToolMessage:
     """Convert agent action and observation into a function message.
     Args:
@@ -17,14 +19,20 @@ def _create_tool_message(
     Returns:
         FunctionMessage that corresponds to the original tool invocation
     """
-    if not isinstance(observation, str):
-        try:
-            import json
-            content = json.dumps(observation, ensure_ascii=False)
-        except Exception:
-            content = str(observation)
+    if isinstance(observation, PAR_SUCCESS):
+        content = observation.result
+    elif isinstance(observation, PAR_ERROR):
+        content = f"Tool Execution Error:\nError Message: {observation.message}"
+
     else:
-        content = observation
+        if not isinstance(observation, str):
+            try:
+                import json
+                content = json.dumps(observation, ensure_ascii=False)
+            except Exception:
+                content = str(observation)
+        else:
+            content = observation
     return ToolMessage(
         tool_call_id=agent_action.tool_call_id,
         content=content,

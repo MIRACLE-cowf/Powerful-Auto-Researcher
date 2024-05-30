@@ -1,20 +1,15 @@
 import json
-import arxiv
+
+from langchain import hub
 from langchain.retrievers import ParentDocumentRetriever
 from langchain_community.document_loaders.arxiv import ArxivLoader
 from langchain_community.document_loaders.youtube import YoutubeLoader
-from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
-from langchain_community.utilities.wikipedia import WikipediaAPIWrapper
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.stores import BaseStore
 
 from CustomHelper.ArxivPaperRelevance_Schema import ArxivPaperRelevance
 from CustomHelper.load_model import get_anthropic_model
 from Tool.Custom_TavilySearchResults import Custom_TavilySearchResults, Custom_TavilySearchAPIWrapper
-from langchain import hub
-
 
 extractor_prompt= hub.pull("miracle/par_webpage_extractor")
 youtube_extractor_prompt=hub.pull("miracle/par_youtube_extractor")
@@ -37,7 +32,7 @@ def web_search(
         api_wrapper=Custom_TavilySearchAPIWrapper(),
         include_answer=True,
         include_raw_content=True,
-        max_results=6, # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
+        max_results=2, # If you increase max results may be hit rate limit and use more token. So be careful! Note: But It perform more high quality documents.
     )
 
     try:
@@ -45,7 +40,7 @@ def web_search(
 
         if isinstance(search_results, dict) and "results" in search_results:
             docs = search_results["results"]
-            web_results = f"<overall_summary>{search_results['answer']}</overall_summary>"
+            web_results = f"<web_results>\n<overall_summary>{search_results['answer']}</overall_summary>"
             chain_batch_input = [{'question': query, 'context': doc['raw_content']} for doc in docs]
             chain_batch_result = extract_tavily_chain.batch(chain_batch_input)
 
@@ -61,6 +56,7 @@ def web_search(
                                 "</document>\n\n")
 
             print("---TAVILY SEARCH DONE---")
+            web_results += "\n</web_results>"
             return web_results
         else:
             error_message = str(search_results) if isinstance(search_results, str) else "Unexpected error occurred!"
@@ -81,7 +77,6 @@ def youtube_search(
     print("---SEARCHING IN YOUTUBE---")
     results = YoutubeSearch(query, max_results=3).to_json()
     data = json.loads(results)
-
 
     def process_video(index, video):
         try:
@@ -184,11 +179,3 @@ def arXiv_search(
 #     return arxiv_results
 
 
-def wikipedia_search(query: str) -> str:
-    print("---SEARCHING IN WIKIPEDIA---")
-    wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
-    results = wikipedia.run(query)
-    print(f"---WIKIPEDIA SEARCH RESULT---\n{results}")
-
-    print("---WIKIPEDIA SEARCH DONE---")
-    return results

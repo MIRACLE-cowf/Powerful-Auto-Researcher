@@ -6,8 +6,9 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 class grade(BaseModel):
     binary_score: str = Field(description="Relevance score 'yes' or 'no'")
 
+
 def grading_documents_chain(
-        model: ChatAnthropic
+    model: ChatAnthropic
 ):
 
     grading_prompt = hub.pull("miracle/par_grading_documents_prompt_public")

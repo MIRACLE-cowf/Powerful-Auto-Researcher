@@ -1,9 +1,8 @@
-from langchain_anthropic import ChatAnthropic
-from langchain_anthropic.experimental import ChatAnthropicTools
-from langchain_community.chat_models.cohere import ChatCohere
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 import os
+
 from dotenv import load_dotenv
+from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 load_dotenv()
 
@@ -30,7 +29,22 @@ def get_anthropic_model(model_name="haiku", temperature=0.3) -> ChatAnthropic:
         temperature=temperature,
         max_tokens=4096,
         anthropic_api_key=os.getenv('ANTHROPIC_API_KEY'),
-        default_headers={"anthropic-beta": "tools-2024-04-04"}
+        default_headers={"anthropic-beta": "tools-2024-05-16"}
+    )
+    return llm
+
+
+def get_openai_model(model_name="gpt3.5", temperature=0.3) -> ChatOpenAI:
+    if model_name == 'gpt4':
+        model = "gpt-4o-2024-05-13"
+    else:
+        model = "gpt-4-turbo-2024-04-09"
+
+    llm = ChatOpenAI(
+        model_name=model,
+        temperature=temperature,
+        max_tokens=4096,
+        openai_api_key=os.getenv('OPENAI_API_KEY'),
     )
     return llm
 

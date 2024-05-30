@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Literal
+
 from langchain_core.pydantic_v1 import BaseModel, Field
 
 
@@ -45,7 +46,7 @@ class HighLevelDocument_Outline(BaseModel):
     title is 'string' type"""
     title: str = Field(..., description="The title of the completed document. Should be English")
     objective: str = Field(..., description="State the main objective or purpose of the document. Should be English")
-    sections: List[Section] = Field(..., description="List the sections of the document. Should be English")
+    sections: List[Section] = Field(..., description="LIST-UP the sections of the document. Should be English")
     evaluation_criteria: str = Field(...,
                                      description="Define the criteria for evaluating the quality and effectiveness of the completed document. Should be English")
 
@@ -88,9 +89,16 @@ class HighLevelDocument_Outline(BaseModel):
 
 class SearchModel(BaseModel):
     """Use at SectionPlan class"""
-    search_engines: List[str] = Field(..., description="Choose the search engine to search for this section.. Should be English")
+    search_engine: Literal[
+        "tavily_search_results_json",
+        "arxiv_search",
+        "youtube_search",
+        "wikipedia",
+        "brave_search_results_json",
+        "asknews_search_results"
+    ] = Field(..., description="Choose the search engine to search for this section.")
     search_queries: List[str] = Field(...,
-                                    description="Enter the search query to be used in the selected search engine for this section.. Should be English")
+                                    description="Enter the search query to be used in the selected search engine for this section. Should be English")
 
 
 class SectionPlan(BaseModel):
@@ -106,7 +114,7 @@ class SectionPlan(BaseModel):
 
     key_points: List[str] = Field(..., description="List the key points to be covered in this section. Should be English")
     search_models: List[SearchModel] = Field(...,
-                                             description="Provide search models for gathering information for this section. Should be English")
+                                             description="Provide one or more search models for gathering information for this section. (search_engine and search_queries are 1 set)")
 
     def as_str(self) -> str:
         xml_output = f"<section>\n<title>{self.title}</title>\n"
@@ -116,16 +124,27 @@ class SectionPlan(BaseModel):
         for point in self.key_points:
             xml_output += f"<point>{point}</point>\n"
         xml_output += "</key_points>\n"
-        for search_model in self.search_models:
-            xml_output += "<search_model>\n"
-            xml_output += f"<search_engine>{search_model.search_engines}</search_engine>\n"
+        for index, search_model in enumerate(self.search_models, start=1):
+            xml_output += f"<search_model {index}>\n"
+            xml_output += f"<search_engine>\n{search_model.search_engine}</search_engine>\n"
             xml_output += "<search_queries>\n"
-            for query in search_model.search_queries:
-                xml_output += f"<query>{query}</query>\n"
+            for q_index, query in enumerate(search_model.search_queries, start=1):
+                xml_output += f"<query {q_index}>{query}</query>\n"
             xml_output += "</search_queries>\n"
-            # xml_output += f"<expected_results>{search_model.expected_results}</expected_results>\n"
-            # xml_output += f"<quality_reflection>{search_model.quality_reflection}</quality_reflection>\n"
             xml_output += "</search_model>\n"
+        xml_output += f"<synthesis_plan>{self.synthesis_plan}</synthesis_plan>\n"
+        xml_output += f"<outline>{self.outline}</outline>\n"
+        xml_output += "</section>"
+        return xml_output
+
+    def as_str_for_basic_info(self) -> str:
+        xml_output = f"<section>\n<title>{self.title}</title>\n"
+        xml_output += f"<explanation>{self.explanation}</explanation>\n"
+        xml_output += f"<content_type>{self.content_type}</content_type>\n"
+        xml_output += "<key_points>\n"
+        for point in self.key_points:
+            xml_output += f"<point>{point}</point>\n"
+        xml_output += "</key_points>\n"
         xml_output += f"<synthesis_plan>{self.synthesis_plan}</synthesis_plan>\n"
         xml_output += f"<outline>{self.outline}</outline>\n"
         xml_output += "</section>"
