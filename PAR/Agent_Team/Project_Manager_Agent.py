@@ -275,16 +275,16 @@ def get_pm_graph():
     workflow.add_node("youtube_agent", youtube_agent_node)
     workflow.add_node("arxiv_agent", arXiv_agent_node)
     workflow.add_node("asknews_agent", asknews_agent_node)
-    workflow.add_node("response", response_node)
+    workflow.add_node("end_manager", response_node)
 
     for member in members:
         workflow.add_edge(member, "manager")
 
     conditional_map = {k: k for k in members}
-    conditional_map["FINISH"] = "response"
+    conditional_map["FINISH"] = "end_manager"
     workflow.add_conditional_edges("manager", lambda x: x["next"], conditional_map)
     workflow.set_entry_point("manager")
-    workflow.set_finish_point("response")
+    workflow.set_finish_point("end_manager")
     project_manager_graph = workflow.compile()
 
     return project_manager_graph
@@ -294,3 +294,7 @@ def get_pm_graph_mermaid():
     app = get_pm_graph()
     print("Project Manager Agent Graph Mermaid")
     print(app.get_graph().draw_mermaid())
+
+
+if __name__ == '__main__':
+    get_pm_graph_mermaid()

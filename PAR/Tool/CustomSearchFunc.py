@@ -7,8 +7,8 @@ from langchain_community.document_loaders.youtube import YoutubeLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.stores import BaseStore
 
-from CustomHelper.ArxivPaperRelevance_Schema import ArxivPaperRelevance
 from CustomHelper.load_model import get_anthropic_model
+from Deprecated.ArxivPaperRelevance_Schema import ArxivPaperRelevance
 from Tool.Custom_TavilySearchResults import Custom_TavilySearchResults, Custom_TavilySearchAPIWrapper
 
 extractor_prompt= hub.pull("miracle/par_webpage_extractor")

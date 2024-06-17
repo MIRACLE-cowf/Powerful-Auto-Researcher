@@ -26,17 +26,6 @@ from Util.Retriever_setup import parent_retriever
 from Util.console_controller import print_warning_message, clear_console, print_see_you_again
 
 
-# class PAR_Final_RespondSchema(BaseModel):
-#     """This tool allows you to let the user know your answer."""
-#     background: str = Field(description="Write main background based on provided documents")
-#     introduction: str = Field(description="Write main introduction based on provided documents")
-#     excerpts: str = Field(description="Write some important excerpts from the provided documents")
-#     insights: str = Field(description="Write your thoughts and insights based on provided documents")
-#     direct_response: str = Field(description="Write your final direct response based on provided documents")
-#     conclusion: str = Field(description="Write your conclusion based on provided documents")
-#     any_helpful: str = Field(description="If there is any useful or helpful information that can help the user in the future based on the provided documents.")
-
-
 class RAG_State(TypedDict):
     user_question: str
     original_query: str
