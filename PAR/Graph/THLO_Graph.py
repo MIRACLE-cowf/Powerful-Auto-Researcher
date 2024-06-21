@@ -74,7 +74,7 @@ Search Engine 6:
 
 
 def get_high_level_outline_chain():
-    high_level_outline_llm = get_anthropic_model(model_name="opus")
+    high_level_outline_llm = get_anthropic_model(model_name="sonnet")
     _high_level_outline_llm = high_level_outline_llm.with_structured_output(HighLevelDocument_Outline)
     fallback_llm = _high_level_outline_llm.with_fallbacks([_high_level_outline_llm] * 3)
     high_level_outline_chain = (
@@ -123,7 +123,7 @@ Tool 6:
 
 
 def get_generate_search_query_plans_chain():
-    generate_search_query_plans_llm = get_anthropic_model(model_name="opus")
+    generate_search_query_plans_llm = get_anthropic_model(model_name="sonnet")
     _generate_search_query_plans_llm = generate_search_query_plans_llm.with_structured_output(HighLevelDocument_Plan)
     fallback_llm = _generate_search_query_plans_llm.with_fallbacks([_generate_search_query_plans_llm] * 5)
     generate_search_query_plans_chain = (

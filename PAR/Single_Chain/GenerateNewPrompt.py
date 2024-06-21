@@ -22,7 +22,7 @@ def _parse_generate_new_question_chain(
 async def get_generate_new_prompt(
 	user_input: str,
 ) -> str:
-	llm = get_anthropic_model(model_name="opus")
+	llm = get_anthropic_model(model_name="sonnet")
 
 	prompt = ChatPromptTemplate.from_messages([
 		("system", """You will be assisting with a RAG (Retrieval-Augmented Generation) AI system that generates new search questions based on user questions. Your task is to take a user's question, translate it into English if needed, identify the key information sought, and generate a new prompt in English based on that key information.

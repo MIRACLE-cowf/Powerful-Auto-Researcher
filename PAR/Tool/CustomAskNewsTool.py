@@ -32,7 +32,7 @@ class Custom_AskNewsResults(BaseTool):
 			docs = retriever.invoke(query)
 			pretty_str = ""
 			for doc in docs:
-				pretty_str += doc.page_content
+				pretty_str += doc.page_content + "\n"
 			return pretty_str
 		except Exception as e:
 			return repr(e)

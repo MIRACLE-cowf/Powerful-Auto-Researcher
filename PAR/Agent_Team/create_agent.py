@@ -47,7 +47,7 @@ def select_prompt_template(agent_specific_role: str) -> dict:
 
 
 def create_agent(llm: ChatAnthropic, tool: BaseTool, agent_specific_role: str):
-    fallback_llm = get_anthropic_model(model_name="opus")
+    fallback_llm = get_anthropic_model(model_name="sonnet")
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a seasoned researcher agent who has been conducting research using the {search_engine} Search API.
 

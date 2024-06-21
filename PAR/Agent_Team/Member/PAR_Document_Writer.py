@@ -50,7 +50,7 @@ Your role now is to create a perfect section, one of a kind in the world, based 
 - Start the section title with "##" when writing the document.
 - The manager agent does not share the document you have written. Therefore, include the document content in your response.
 	- No other words are needed in the response. Just return the document.
-- Comply with copyright and licensing requirements.
+- Comply with copyright and licensing requirements. Always cite the sources of information using proper Markdown formatting to respect intellectual property rights.
 - Do not arbitrarily write or insert content or images that do not exist in the search results.
 - All content should be written using Markdown syntax.
 - Aim for a maximum length of 4000 characters for the final document.
