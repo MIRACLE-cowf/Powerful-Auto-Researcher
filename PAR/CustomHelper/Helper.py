@@ -6,7 +6,7 @@ from anthropic import BadRequestError
 from langchain_core.documents import Document
 from langchain_core.runnables import Runnable, RunnableSerializable
 
-from CustomHelper.Custom_Error_Handler import PAR_ERROR
+from PAR.CustomHelper.Custom_Error_Handler import PAR_ERROR
 
 
 def get_current_date():

@@ -2,8 +2,8 @@ from langchain import hub
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langsmith import traceable
 
-from CustomHelper.Helper import retry_with_delay_async
-from CustomHelper.load_model import get_anthropic_model
+from PAR.CustomHelper.Helper import retry_with_delay_async
+from PAR.CustomHelper.load_model import get_anthropic_model
 
 
 class DerivedQueries(BaseModel):

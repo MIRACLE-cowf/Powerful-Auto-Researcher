@@ -8,14 +8,14 @@ from langchain_core.agents import AgentAction, AgentFinish
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolExecutor
 
-from CustomHelper.Anthropic_helper import format_to_anthropic_tool_messages
-from CustomHelper.THLO_helper import SectionPlan
-from CustomHelper.load_model import get_anthropic_model
-from Deprecated.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_beta
-from Tool.CustomSearchFunc import web_search, wikipedia_search, youtube_search, arXiv_search
-from Tool.CustomSearchTool import Custom_WikipediaQueryRun, Custom_YouTubeSearchTool, Custom_arXivSearchTool
-from Tool.Respond_Agent_Section_Tool import FinalResponseTool, FinalResponse_SectionAgent
-from Util.Retriever_setup import mongodb_store, parent_retriever
+from PAR.CustomHelper.Anthropic_helper import format_to_anthropic_tool_messages
+from PAR.CustomHelper.THLO_helper import SectionPlan
+from PAR.CustomHelper.load_model import get_anthropic_model
+from PAR.Deprecated.Custom_AnthropicAgentOutputParser import AnthropicAgentOutputParser_beta
+from PAR.Tool.CustomSearchFunc import web_search, youtube_search, arXiv_search
+from PAR.Tool.CustomSearchTool import Custom_WikipediaQueryRun, Custom_YouTubeSearchTool, Custom_arXivSearchTool
+from PAR.Tool.Respond_Agent_Section_Tool import FinalResponseTool, FinalResponse_SectionAgent
+from PAR.Util.Retriever_setup import mongodb_store, parent_retriever
 
 agent_prompt = hub.pull("miracle/par_agent_prompt_public")
 

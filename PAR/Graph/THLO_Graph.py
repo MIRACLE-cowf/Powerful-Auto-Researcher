@@ -5,8 +5,8 @@ from langchain import hub
 from langgraph.graph import StateGraph
 from langsmith import traceable
 
-from CustomHelper.THLO_helper import Thought, HighLevelDocument_Outline, HighLevelDocument_Plan
-from CustomHelper.load_model import get_anthropic_model
+from PAR.CustomHelper.THLO_helper import Thought, HighLevelDocument_Outline, HighLevelDocument_Plan
+from PAR.CustomHelper.load_model import get_anthropic_model
 
 thought_prompt = hub.pull("miracle/par_thought_prompt_public")
 high_level_outline_prompt = hub.pull("miracle/par_high_level_outline_prompt_public")

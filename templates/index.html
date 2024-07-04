@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}MIRACLE - Home{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+        .search-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .search-tabs {
+            margin-bottom: 1rem;
+        }
+        .search-tabs .nav-link {
+            color: #495057;
+        }
+        .search-tabs .nav-link.active {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .search-input-group {
+            margin-bottom: 1rem;
+        }
+        .search-results {
+            margin-top: 2rem;
+        }
+        .result-item {
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        .result-item:hover {
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            transform: translateY(-3px);
+        }
+        .result-title {
+            color: #007bff;
+            margin-bottom: 0.5rem;
+        }
+        .result-url {
+            color: #28a745;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .result-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .search-btn:disabled, .par-search-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-container">
+    <h1 class="text-center mb-4">Welcome</h1>
+
+    <ul class="nav nav-tabs search-tabs" id="searchTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="web-tab" data-bs-toggle="tab" data-bs-target="#web" type="button" role="tab" aria-controls="web" aria-selected="true">
+                <i class="fas fa-globe"></i> Web Search
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="music-tab" data-bs-toggle="tab" data-bs-target="#music" type="button" role="tab" aria-controls="music" aria-selected="false">
+                <i class="fas fa-music"></i> Music Search
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="searchTabContent">
+        <div class="tab-pane fade show active" id="web" role="tabpanel" aria-labelledby="web-tab">
+            <div class="search-input-group">
+                <form action="{{ url_for('web_search') }}" method="GET" id="webSearchForm">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control web-search-input" name="q" placeholder="어떤 것을 검색 할까요?">
+                        <button class="btn btn-primary search-btn" type="submit" disabled>Search</button>
+                    </div>
+                </form>
+            </div>
+            <div class="text-center mt-3">
+                <button class="btn btn-secondary par-search-btn" disabled>Powerful-Auto-Researcher</button>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="music" role="tabpanel" aria-labelledby="music-tab">
+            <form action="{{ url_for('search') }}" method="POST" id="musicSearchForm">
+                <div class="search-input-group">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control music-search-input" name="query" placeholder="어떤 곡을 찾고 있나요?">
+                        <button class="btn btn-primary search-btn" type="submit" disabled>Search</button>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="search_type" id="search_track" value="track" checked>
+                        <label class="form-check-label" for="search_track">트랙</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="search_type" id="search_artist" value="artist">
+                        <label class="form-check-label" for="search_artist">아티스트</label>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize Bootstrap tabs
+        var tabEl = document.querySelector('button[data-bs-toggle="tab"]')
+        var tab = new bootstrap.Tab(tabEl)
+
+        // Add click event listeners to tab buttons
+        $('#searchTabs .nav-link').on('click', function (e) {
+            e.preventDefault()
+            $(this).tab('show')
+        })
+
+        // Function to toggle button state based on input
+        function toggleButtonState(inputSelector, buttonSelector) {
+            $(inputSelector).on('input', function() {
+                const isEmpty = $(this).val().trim() === '';
+                $(buttonSelector).prop('disabled', isEmpty);
+            });
+        }
+
+        // Toggle Web Search button
+        toggleButtonState('.web-search-input', '#web .search-btn');
+        toggleButtonState('.web-search-input', '.par-search-btn');
+
+        // Toggle Music Search button
+        toggleButtonState('.music-search-input', '#music .search-btn');
+
+        $('.web-search-input').on('input', function() {
+            const isEmpty = $(this).val().trim() === '';
+            $('.par-search-btn').prop('disabled', isEmpty);
+        });
+
+        // Prevent form submission if input is empty
+        $('#webSearchForm, #musicSearchForm').on('submit', function(e) {
+            const input = $(this).find('input[type="text"]');
+            if (input.val().trim() === '') {
+                e.preventDefault();
+                alert('Please enter a search query.');
+            }
+        });
+    });
+</script>
+{% endblock %}

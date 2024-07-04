@@ -3,13 +3,13 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel
 from langsmith import traceable
 
-from CustomHelper.Helper import retry_with_delay_async
-from CustomHelper.load_model import get_anthropic_model
-from Tool.CustomBraveSearchFunc import _build_brave_results
-from Tool.CustomSearchFunc_v2 import _get_content_extraction_agent
-from Tool.CustomTavilySearchFunc import _build_raw_contents_tavily
-from Tool.Custom_BraveSearchResults import get_brave_search_tool
-from Tool.Custom_TavilySearchResults import get_tavily_search_tool
+from PAR.CustomHelper.Helper import retry_with_delay_async
+from PAR.CustomHelper.load_model import get_anthropic_model
+from PAR.Tool.CustomBraveSearchFunc import _build_brave_results
+from PAR.Tool.CustomSearchFunc_v2 import _get_content_extraction_agent
+from PAR.Tool.CustomTavilySearchFunc import _build_raw_contents_tavily
+from PAR.Tool.Custom_BraveSearchResults import get_brave_search_tool
+from PAR.Tool.Custom_TavilySearchResults import get_tavily_search_tool
 
 
 @traceable(name="Fast Search Func")

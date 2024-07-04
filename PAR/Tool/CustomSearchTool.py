@@ -54,6 +54,7 @@ class Custom_YouTubeSearchTool(BaseTool):
     args_schema: Type[BaseModel] = SearchInput
 
     def _search(self, person: str, num_results: int) -> str:
+
         from youtube_search import YoutubeSearch
 
         results = YoutubeSearch(person, num_results).to_json()

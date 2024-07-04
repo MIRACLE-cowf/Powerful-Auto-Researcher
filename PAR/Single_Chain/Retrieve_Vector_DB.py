@@ -1,7 +1,7 @@
 from langchain_core.retrievers import BaseRetriever
 from langsmith import traceable
 
-from Single_Chain.MultiQueryChain import DerivedQueries
+from PAR.Single_Chain.MultiQueryChain import DerivedQueries
 
 
 @traceable(name="Retrieve Vector DB", run_type="retriever")

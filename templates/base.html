@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MIRACLE{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+     <style>
+        #parOverlay {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        #parOverlay.minimized {
+            height: 40px;
+        }
+        .par-content {
+            padding: 15px;
+        }
+        .par-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .par-controls {
+            display: flex;
+            gap: 10px;
+        }
+        .par-control {
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+        .par-status {
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        .par-actions {
+            display: flex;
+            justify-content: space-between;
+        }
+        #parModal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .par-modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .par-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .par-modal-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .par-modal-close:hover,
+        .par-modal-close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .par-modal-body {
+            margin-bottom: 20px;
+        }
+        .par-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .par-modal-actions button {
+            margin-left: 10px;
+        }
+        #parModalFastSearchResults {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">MIRACLE</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/my_library">My Library</a>
+            </div>
+        </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+
+    <!-- PAR Overlay -->
+    <div id="parOverlay">
+        <div class="par-content">
+            <div class="par-header">
+                <h5>PAR Progress</h5>
+                <div class="par-controls">
+                    <span class="par-control par-minimize">_</span>
+                </div>
+            </div>
+            <div class="par-status">Status: <span id="parStatus">Initializing...</span></div>
+            <div id="parCurrentStage"></div>
+            <div class="progress mb-3">
+                <div id="parProgress" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+            <div id="parError" style="display: none; color: red;"></div>
+            <div class="par-actions">
+                <button id="viewResults" class="btn btn-primary btn-sm" style="display: none;">View Results</button>
+                <button id="cancelPar" class="btn btn-secondary btn-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAR Modal -->
+    <div id="parModal">
+        <div class="par-modal-content">
+            <div class="par-modal-header">
+                <h4>PAR 깊은 검색</h4>
+                <span class="par-modal-close">&times;</span>
+            </div>
+            <div class="par-modal-body">
+                <p id="parModalMessage"></p>
+                <div id="parModalFastSearchResults"></div>
+            </div>
+            <div class="par-modal-actions">
+                <button id="parModalNo" class="btn btn-secondary">아니오</button>
+                <button id="parModalYes" class="btn btn-primary">예</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='js/par_checker.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

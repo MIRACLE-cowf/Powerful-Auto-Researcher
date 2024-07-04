@@ -10,9 +10,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable
 from langsmith import traceable
 
-from CustomHelper.Custom_Error_Handler import PAR_SUCCESS, PAR_ERROR
-from CustomHelper.Helper import retry_with_delay_async
-from CustomHelper.load_model import get_anthropic_model
+from PAR.CustomHelper.Custom_Error_Handler import PAR_SUCCESS, PAR_ERROR
+from PAR.CustomHelper.Helper import retry_with_delay_async
+from PAR.CustomHelper.load_model import get_anthropic_model
 
 
 def _get_content_extraction_agent() -> RunnableSerializable:
@@ -113,7 +113,7 @@ async def youtube_search_v2(
     print("---SEARCHING IN YOUTUBE---")
 
     try:
-        results = await YoutubeSearch(query, max_results=5).to_json()
+        results = YoutubeSearch(query, max_results=5).to_json()
     except Exception as e:
         print(f"youtube search error: {str(e)}")
         return PAR_ERROR(str(e))

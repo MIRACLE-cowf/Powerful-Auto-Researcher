@@ -1,29 +1,29 @@
 import asyncio
 import pickle
 import re
-from typing import TypedDict, Dict, Any, List
+from typing import TypedDict, Dict, Any, List, Callable
 
 from langchain_text_splitters import CharacterTextSplitter
 from langgraph.graph import StateGraph, END
 from langsmith import traceable
 
-from Agent_Team.Member.Common_Search_AgentGraph import TavilySearchAgentGraph
-from Agent_Team.Project_Manager_Agent import get_pm_graph, get_pm_graph_mermaid
-from CustomHelper.Helper import generate_doc_result, generate_final_doc_results, retry_with_delay_async
-from CustomHelper.THLO_helper import SectionPlan
-from CustomHelper.load_model import get_anthropic_model
-from Graph.THLO_Graph import get_THLO_Graph
-from Single_Chain.ConclustionChain import conclusion_chain
-from Single_Chain.FastSearchChain import get_fast_search_result
-from Single_Chain.GenerateFinalAnswer import get_generate_final_answer_chain
-from Single_Chain.GenerateNewPrompt import get_generate_new_prompt
-from Single_Chain.GradingDocumentsChain import grading_documents_chain
-from Single_Chain.MultiQueryChain import get_multi_query_for_retrieve, DerivedQueries
-from Single_Chain.Retrieve_Vector_DB import search_vector_store
-from Util.PAR_Helper import setup_new_document_format, parse_result_to_document_format, \
+from PAR.Agent_Team.Member.Common_Search_AgentGraph import TavilySearchAgentGraph
+from PAR.Agent_Team.Project_Manager_Agent import get_pm_graph, get_pm_graph_mermaid
+from PAR.CustomHelper.Helper import generate_doc_result, generate_final_doc_results, retry_with_delay_async
+from PAR.CustomHelper.THLO_helper import SectionPlan
+from PAR.CustomHelper.load_model import get_anthropic_model
+from PAR.Graph.THLO_Graph import get_THLO_Graph
+from PAR.Single_Chain.ConclustionChain import conclusion_chain
+from PAR.Single_Chain.FastSearchChain import get_fast_search_result
+from PAR.Single_Chain.GenerateFinalAnswer import get_generate_final_answer_chain
+from PAR.Single_Chain.GenerateNewPrompt import get_generate_new_prompt
+from PAR.Single_Chain.GradingDocumentsChain import grading_documents_chain
+from PAR.Single_Chain.MultiQueryChain import get_multi_query_for_retrieve, DerivedQueries
+from PAR.Single_Chain.Retrieve_Vector_DB import search_vector_store
+from PAR.Util.PAR_Helper import setup_new_document_format, parse_result_to_document_format, \
     save_document_to_md
-from Util.Retriever_setup import parent_retriever
-from Util.console_controller import print_warning_message, clear_console, print_see_you_again
+from PAR.Util.Retriever_setup import parent_retriever
+from PAR.Util.console_controller import print_warning_message, clear_console, print_see_you_again
 
 
 class RAG_State(TypedDict):
@@ -35,13 +35,19 @@ class RAG_State(TypedDict):
     fast_search_results: str
     search_continue: bool
     keys: Dict[str, Any]
+    callback: Callable[[str, Any], None]
 
 
 @traceable(name="MAIN - Generate New Prompt(Single Chain)")
 async def generate_new_prompt_node(state: RAG_State):
+    if state['callback']:
+        await state['callback']("transform_new_query")
     print("---MAIN STATE: GENERATE NEW PROMPT IN---")
+
     original_query = state["user_question"]
     new_question_prompt = await get_generate_new_prompt(user_input=original_query)
+
+
     print("---MAIN STATE: GENERATE NEW PROMPT OUT---")
 
     return {
@@ -51,9 +57,14 @@ async def generate_new_prompt_node(state: RAG_State):
 
 @traceable(name="MAIN - Multi Query Generator(Single Chain)")
 async def multi_query_generator_node(state: RAG_State):
+    if state['callback']:
+        await state['callback']("multi_query_generator")
+
     print("---MAIN STATE: MULTI QUERY GENERATOR IN---")
     original_query = state["original_query"]
     multi_query_result = await get_multi_query_for_retrieve(question=original_query)
+
+
     print("---MAIN STATE: MULTI QUERY GENERATOR OUT---")
 
     return {
@@ -62,13 +73,18 @@ async def multi_query_generator_node(state: RAG_State):
 
 
 @traceable(name="MAIN - Retrieve Vector DB(Retriever)")
-def retrieve_node(state: RAG_State):
+async def retrieve_node(state: RAG_State):
+    print(state['callback'])
+    if state['callback']:
+        await state['callback']("retrieve_vector_db")
+
     print("---MAIN STATE: RETRIEVE IN VECTOR DB---")
     multi_queries = state['derived_queries']
     retrieve_result = search_vector_store(
         multi_query=multi_queries,
         retriever=parent_retriever
     )
+
     print("---MAIN STATE: RETRIEVE OUT VECTOR DB---")
 
     return {
@@ -79,8 +95,11 @@ def retrieve_node(state: RAG_State):
 
 
 @traceable(name="MAIN - Grade Document(Single Chain)")
-def grade_document(state: RAG_State):
+async def grade_document(state: RAG_State):
     """Need code refactoring"""
+    if state['callback']:
+        await state['callback']("grade_each_documents")
+
     print("---MAIN STATE: GRADING DOCUMENTS START---")
     state_dict = state["keys"]
     retrieve_result = state_dict['retrieve_result']
@@ -126,6 +145,8 @@ def grade_document(state: RAG_State):
             grading_results[new_query] = "needsearch"
 
     print("---MAIN STATE: GRADING DOCUMENTS DONE---")
+
+
     return {
         "keys": {
             "grading_results": grading_results
@@ -189,6 +210,8 @@ async def fast_search(state: RAG_State):
 
 @traceable(name="MAIN - Parallel Execution")
 async def parallel_execution_node(state: RAG_State):
+    if state['callback']:
+        await state['callback']("THLO")
     print("---MAIN STATE: PARALLEL EXECUTION IN---")
     fast_search_task = asyncio.create_task(fast_search(state))
     thlo_task = asyncio.create_task(think_high_level_outline_node(state))
@@ -196,11 +219,26 @@ async def parallel_execution_node(state: RAG_State):
     _fast_search_result = await fast_search_task
     print(f"fast search result: {_fast_search_result['fast_search_results']}")
     state["fast_search_results"] = _fast_search_result['fast_search_results']
-    user_input = input("Fast search completed. Continue with Deep Search? (y/n) ")
-    if user_input.lower() != 'y':
-        state["search_continue"] = False
+
+    if state['callback']:
+        continue_search = await state['callback']("user_input", {
+            "type": "confirm",
+            "message": "Fast search completed. Continue with Deep Search?",
+            "fast_search_results": state['fast_search_results']
+        })
+    else:
+        continue_search = True
+
+    if not continue_search:
+        state['search_continue'] = False
         thlo_task.cancel()
         return {**state}
+
+    # user_input = input("Fast search completed. Continue with Deep Search? (y/n) ")
+    # if user_input.lower() != 'y':
+    #     state["search_continue"] = False
+    #     thlo_task.cancel()
+    #     return {**state}
 
     _thlo_graph_result = await thlo_task
     print(_thlo_graph_result)
@@ -209,6 +247,9 @@ async def parallel_execution_node(state: RAG_State):
         "evaluation_criteria": _thlo_graph_result["evaluation_criteria"],
     }
     state["search_continue"] = True
+
+
+
     print("---MAIN STATE: PARALLEL EXECUTION COMPLETE---")
 
     return {
@@ -218,6 +259,8 @@ async def parallel_execution_node(state: RAG_State):
 
 @traceable(name="MAIN - Composable Search")
 async def composable_search_node(state: RAG_State):
+    if state['callback']:
+        await state['callback']("Composable_Search")
     print('---MAIN STATE: COMPOSABLE SEARCH NODE---')
     # with open('state.pkl', 'wb') as f:
     #     pickle.dump(state, f)
@@ -250,6 +293,8 @@ async def composable_search_node(state: RAG_State):
 
     ordered_results = {search_graph_result['order']: search_graph_result for search_graph_result in search_graph_batch_results}
 
+
+
     for order in sorted(ordered_results.keys()):
         print(f'---ORDER: {order}---')
         search_graph_result = ordered_results[order]
@@ -267,8 +312,11 @@ async def composable_search_node(state: RAG_State):
         # document = search_graph_result["final_section_document"]
         full_document_without_conclusion += parse_result_to_document_format(document=document)
     print('---GENERATE DOCUMENT DRAFT DONE---')
+    if state['callback']:
+        await state['callback']('Generate_Conclusion')
 
     conclusion = await conclusion_chain(previous_sections_info=full_document_without_conclusion, conclusion_section_info=last_conclusion_section.as_str())
+
     full_document_draft_display = full_document_without_conclusion + '\n\n\n' + conclusion
 
     return {
@@ -290,6 +338,9 @@ async def test_composable_search_node():
 
 @traceable(name="MAIN - Generate Final Answer", run_type="llm")
 async def generate(state: RAG_State):
+    if state['callback']:
+        await state['callback']('Generate')
+
     print("---GENERATE---")
     state_dict = state["keys"]
     user_question = state["user_question"]
@@ -302,26 +353,26 @@ async def generate(state: RAG_State):
     documents_for_prompt = ""
     if full_documents_display:
         # No Need to wait for save
-        asyncio.ensure_future(save_document_to_md(full_document=full_documents_display, document_title=document_title))
+        # asyncio.ensure_future(save_document_to_md(full_document=full_documents_display, document_title=document_title))
 
         # save_document_to_md(full_document=full_documents_display, document_title=document_title)
         documents_for_prompt = full_documents_display
-        user_response = input('[y/n] Would you want to save this document in Vector Store?: ')
-        if user_response == 'y':
-            text_splitter = CharacterTextSplitter(
-                separator="\n\n",
-                chunk_size=4000,
-                chunk_overlap=400,
-                length_function=len,
-                is_separator_regex=False
-            )
-            # Will be use it soon!
-            # docs = text_splitter.create_documents([documents_for_prompt])
-            # key = question + "_final_document"
-            # for index, doc in enumerate(docs, start=1):
-            #     mongodb_store.mset([(key, doc)])
-            #     parent_retriever.add_documents([doc], ids=key+f"_{index}")
-            print("DOCUMENT SAVED AT VECTORSTORE & MONGODB SUCCESSFULLY!")
+        # user_response = input('[y/n] Would you want to save this document in Vector Store?: ')
+        # if user_response == 'y':
+        #     text_splitter = CharacterTextSplitter(
+        #         separator="\n\n",
+        #         chunk_size=4000,
+        #         chunk_overlap=400,
+        #         length_function=len,
+        #         is_separator_regex=False
+        #     )
+        #     # Will be use it soon!
+        #     # docs = text_splitter.create_documents([documents_for_prompt])
+        #     # key = question + "_final_document"
+        #     # for index, doc in enumerate(docs, start=1):
+        #     #     mongodb_store.mset([(key, doc)])
+        #     #     parent_retriever.add_documents([doc], ids=key+f"_{index}")
+        #     print("DOCUMENT SAVED AT VECTORSTORE & MONGODB SUCCESSFULLY!")
     else:
         for query, document in documents.items():
             documents_for_prompt += document
@@ -353,7 +404,7 @@ def decide_continue(state: RAG_State):
         return "False"
 
 
-def build_graph():
+def build_PAR_graph():
     workflow = StateGraph(RAG_State)
     # add node
     workflow.add_node("transform_new_query", generate_new_prompt_node)
@@ -399,7 +450,7 @@ def build_graph():
 
 
 def get_graph_mermaid():
-    app = build_graph()
+    app = build_PAR_graph()
     try:
         print("Main Graph Mermaid")
         print(app.get_graph(xray=True).draw_mermaid())
@@ -410,7 +461,7 @@ def get_graph_mermaid():
 
 
 async def run_graph():
-    app = build_graph()
+    app = build_PAR_graph()
     print_warning_message()
     user_input = input("[y/n]:")
 

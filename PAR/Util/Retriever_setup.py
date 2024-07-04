@@ -5,7 +5,7 @@ from langchain_community.storage.mongodb import MongoDBStore
 from langchain_pinecone import PineconeVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from CustomHelper.load_model import get_openai_embedding_model
+from PAR.CustomHelper.load_model import get_openai_embedding_model
 
 load_dotenv()
 
@@ -15,7 +15,7 @@ mongoDB_collection = os.getenv("MONGODB_COLLECTION")
 pinecone_index_name = os.getenv("PINECONE_INDEX_NAME")
 
 
-mongodb_store = MongoDBStore(mongoDBURI, db_name=mongoDB_name, collection_name=mongoDB_collection)
+mongodb_store = MongoDBStore(connection_string=mongoDBURI, db_name=mongoDB_name, collection_name=mongoDB_collection)
 
 
 embedding = get_openai_embedding_model(model_name="large") # Replace your prefer embedding model

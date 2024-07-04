@@ -1,19 +1,20 @@
 from typing import Optional, Union, List, Dict, Type
 
+import requests
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.runnables import RunnableWithFallbacks
 
-from PAR.CustomHelper.Custom_Error_Handler import PAR_ERROR
+# from CustomHelper.Custom_Error_Handler import PAR_ERROR
 
 
 class TavilyInput(BaseModel):
    """Input for the Tavily tool."""
 
    query: str = Field(description="The search query to look up using the Tavily Search API.")
-   max_results: int = Field(default=3, ge=2, le=6, description="The maximum number of search results to return. Must be between 2 and 6. Default value is 3")
+   max_results: int = Field(default=3, ge=2, le=5, description="The maximum number of search results to return. Must be between 2 and 6. Default value is 3")
 
 
 class Custom_TavilySearchResults(TavilySearchResults):
@@ -26,7 +27,7 @@ class Custom_TavilySearchResults(TavilySearchResults):
         "The input should be a well-formed search query, and the tool will return up to the specified maximum number of relevant results in JSON format. "
         "In addition to the search query, you can also specify the maximum number of results to retrieve, allowing for dynamic control over the amount of information returned."
     )
-    max_results: int = 6
+    max_results: int = 5
     args_schema: Type[BaseModel] = TavilyInput
 
 
@@ -46,8 +47,8 @@ class Custom_TavilySearchResults(TavilySearchResults):
             )
         except Exception as e:
             print(f'TAVILY API occur error! {str(e)}')
-            raise PAR_ERROR(str(e))
-            # return repr(e)
+            # raise PAR_ERROR(str(e))
+            return repr(e)
 
     async def _arun(
         self,
@@ -65,8 +66,8 @@ class Custom_TavilySearchResults(TavilySearchResults):
             )
         except Exception as e:
             print(f'TAVILY API occur error! {str(e)}')
-            raise PAR_ERROR(str(e))
-            # return repr(e)
+            # raise PAR_ERROR(str(e))
+            return repr(e)
 
 
 class Custom_TavilySearchAPIWrapper(TavilySearchAPIWrapper):
@@ -182,7 +183,9 @@ class Custom_TavilySearchAPIWrapper(TavilySearchAPIWrapper):
             final_results["images"] = images
 
         for result in results:
+            print(result)
             clean_result = {
+                "title": result['title'],
                 "url": result["url"],
                 "content": result["content"]
             }
@@ -207,3 +210,53 @@ def get_tavily_search_tool(max_results: Optional[int] = None) -> RunnableWithFal
     _tavily_search_tool_with_fallbacks = _tavily_search_tool.with_fallbacks([_tavily_search_tool] * 60)
     print('@@@@ LOAD TAVILY TOOL SUCCESSFULLY @@@@')
     return _tavily_search_tool_with_fallbacks
+
+
+def _is_pdf(url: str) -> bool:
+    if not url:
+        return False
+    if url.lower().endswith(".pdf"):
+        return True
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return 'application/pdf' in response.headers.get('Content-Type', '')
+    except Exception as e:
+        return False
+
+
+def _build_raw_contents_tavily(docs: list) -> str:
+    if docs is None:
+        return ""  # docs가 None인 경우 빈 문자열 반환
+
+    raw_contents = ""
+    for index, doc in enumerate(docs, start=1):
+
+        if _is_pdf(doc['url']):
+            continue
+
+        raw_contents += (f"<document index='{index}'>\n"
+                         "<document_content_snippet>\n"
+                         f"{doc['content']}"
+                         "</document_content_snippet>\n"
+                         "<document_raw_content>\n"
+                         f"{doc['raw_content']}\n"
+                         "</document_raw_content>\n"
+                         f"<source>{doc['url']}</source>\n"
+                         "</document>\n\n")
+
+    return raw_contents
+
+
+def build_search_results_item_tavily(docs: list) -> list[dict]:
+    result = []
+    for index, doc in enumerate(docs, start=1):
+        item = {
+            "title": doc['title'],
+            'url': doc['url'],
+            'description': doc['content'],
+        }
+        result.append(item)
+
+    return result

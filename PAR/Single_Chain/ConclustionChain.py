@@ -1,8 +1,8 @@
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from CustomHelper.Helper import retry_with_delay_async
-from CustomHelper.load_model import get_anthropic_model
+from PAR.CustomHelper.Helper import retry_with_delay_async
+from PAR.CustomHelper.load_model import get_anthropic_model
 
 
 async def conclusion_chain(

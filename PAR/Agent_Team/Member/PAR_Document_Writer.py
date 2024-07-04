@@ -1,7 +1,7 @@
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from CustomHelper.load_model import get_anthropic_model
+from PAR.CustomHelper.load_model import get_anthropic_model
 
 
 def get_document_generation_agent():

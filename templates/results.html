@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block extra_css %}
+<style>
+        .track-card {
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        .track-card:hover {
+            transform: scale(1.05);
+        }
+        .card-img-top {
+            height: 150px;
+            object-fit: cover;
+        }
+        #track-detail {
+            position: fixed;
+            top: 0;
+            right: -50%;
+            width: 50%;
+            height: 100%;
+            background: white;
+            transition: right 0.3s;
+            overflow-y: auto;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+        }
+        #track-detail.show {
+            right: 0;
+        }
+        .content-shift {
+            transition: margin-right 0.3s;
+        }
+        .content-shift.active {
+            margin-right: 50%;
+        }
+        #close-detail {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
+        .track-image-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 300px; /* 이미지 컨테이너의 높이를 조절할 수 있습니다 */
+            overflow: hidden;
+        }
+        .track-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="container mt-5 content-shift" id="main-content">
+        <h1 class="mb-4">Search Results for "{{ query }}"</h1>
+        <div class="row row-cols-2 row-cols-md-4 row-cols-lg-5 g-3">
+            {% for track in results %}
+            <div class="col">
+                <div class="card h-100 track-card" data-track-id="{{ track.id }}">
+                    <img src="{{ track.image_url }}" class="card-img-top" alt="{{ track.title }}">
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-0 text-truncate" title="{{ track.title }}">{{ track.title }}</h6>
+                        <p class="card-text mb-0 small text-muted text-truncate" title="{{ track.artist }}">{{ track.artist }}</p>
+                        <p class="card-text small text-muted text-truncate" title="{{ track.album }}">{{ track.album }}</p>
+                        <button class="btn btn-sm btn-outline-primary save-to-library" data-track-id="{{ track.id }}">Save to Library</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('search_results', query=query, search_type=search_type, page=page-1) }}">Previous</a>
+                </li>
+                {% set start = page - 2 if page > 2 else 1 %}
+                {% set end = page + 2 if page < total_pages - 1 else total_pages %}
+                {% for p in range(start, end + 1) %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('search_results', query=query, search_type=search_type, page=p) }}">{{ p }}</a>
+                </li>
+                {% endfor %}
+                <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('search_results', query=query, search_type=search_type, page=page+1) }}">Next</a><p></p>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+
+        <a href="/" class="btn btn-primary mt-3">New Search</a>
+    </div>
+
+    <div id="track-detail"></div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+        $(document).ready(function() {
+            $('.track-card').on('click', function() {
+                var trackId = $(this).data('track-id');
+                $.get('/track/' + trackId, function(data) {
+                    var detailHtml = `
+                        <button class="btn btn-secondary" id="close-detail">&times;</button>
+                        <div class="p-4">
+                            <div class="track-image-container mb-3">
+                                <img src="${data.image_url}" class="track-image" alt="${data.title}">
+                            </div>
+                            <h2 class="text-center">${data.title}</h2>
+                            <h4 class="text-center">${data.artist}</h4>
+                            <hr>
+                            <h5>Lyrics:</h5>
+                            <p style="white-space: pre-line;">${data.lyrics}</p>
+                        </div>
+                    `;
+                    $('#track-detail').html(detailHtml).addClass('show');
+                    $('#main-content').addClass('active');
+                });
+            });
+
+            $(document).on('click', '#close-detail', function() {
+                $('#track-detail').removeClass('show');
+                $('#main-content').removeClass('active');
+            });
+                        $('.save-to-library').on('click', function(e) {
+                e.stopPropagation();
+                var trackId = $(this).data('track-id');
+                $.post('/api/library/add', { track_id: trackId }, function(response) {
+                    if (response.success) {
+                        alert('Track saved to library');
+                    } else {
+                        alert('Failed to save track to library');
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

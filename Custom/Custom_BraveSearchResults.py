@@ -9,7 +9,6 @@ from langchain_core.runnables import RunnableWithFallbacks
 from langchain_core.tools import BaseTool
 from langchain_core.utils import get_from_dict_or_env
 
-from PAR.CustomHelper.Custom_Error_Handler import PAR_ERROR
 
 BRAVE_SEARCH_API_URL = "https://api.search.brave.com/res/v1"
 
@@ -86,7 +85,8 @@ class Custom_BraveSearchAPIWrapper(BaseModel):
 						}
 					except Exception as e:
 						print(f"BraveSearchResult occur error! Detail: {str(e)}")
-						raise PAR_ERROR(str(e))
+						raise repr(e)
+						# raise PAR_ERROR(str(e))
 
 				return {
 					"brave_search"  : data,
@@ -94,7 +94,8 @@ class Custom_BraveSearchAPIWrapper(BaseModel):
 				}
 		else:
 			print(f"Error: {response.status_code}")
-			raise PAR_ERROR(str(response))
+			raise repr(response)
+			# raise PAR_ERROR(str(response))
 
 	def _brave_search_summarizer_search(
 		self,
@@ -121,7 +122,8 @@ class Custom_BraveSearchAPIWrapper(BaseModel):
 			return data
 		else:
 			print(f"Error: {response.status_code}")
-			raise PAR_ERROR(response)
+			raise repr(response)
+			# raise PAR_ERROR(response)
 
 	async def raw_results_async(
 		self,
@@ -176,7 +178,8 @@ class Custom_BraveSearchAPIWrapper(BaseModel):
 									"summary_search": summary
 								}
 							except Exception as e:
-								raise PAR_ERROR(str(e))
+								raise repr(e)
+								# raise PAR_ERROR(str(e))
 
 						return {
 							"brave_search"  : data,
@@ -184,7 +187,8 @@ class Custom_BraveSearchAPIWrapper(BaseModel):
 						}
 				else:
 					print(f"Error: {response.status}")
-					raise PAR_ERROR(str(response))
+					raise repr(str(response))
+					# raise PAR_ERROR(str(response))
 
 	async def _brave_search_summarizer_search_async(
 		self,
@@ -212,14 +216,15 @@ class Custom_BraveSearchAPIWrapper(BaseModel):
 					return data
 				else:
 					print(f"Error: {response.status}")
-					raise PAR_ERROR(f'Error {response.status}: {response.reason}')
+					raise repr(f'Error {response.status}: {response.reason}')
+					# raise PAR_ERROR(f'Error {response.status}: {response.reason}')
 
 
 class BraveInput(BaseModel):
 	"""Input for the Brave Search API"""
 
 	query: str = Field(description="The search query to look up using the Brave Search API")
-	max_results: int = Field(default=3, ge=2, le=6, description="The maximum number of search results to return. Must be between 2 and 6. Default value is 3")
+	max_results: int = Field(default=3, ge=2, le=5, description="The maximum number of search results to return. Must be between 2 and 6. Default value is 3")
 
 
 class Custom_BraveSearchResults(BaseTool):
@@ -233,7 +238,7 @@ class Custom_BraveSearchResults(BaseTool):
 	)
 	args_schema: Type[BaseModel] = BraveInput
 	api_wrapper: Custom_BraveSearchAPIWrapper = Field(default_factory=Custom_BraveSearchAPIWrapper)
-	max_results: int = 6
+	max_results: int = 5
 	extra_snippets: bool = False
 	summary: bool = False
 
@@ -251,7 +256,8 @@ class Custom_BraveSearchResults(BaseTool):
 			)
 		except Exception as e:
 			print(f"BRAVE SEARCH API occur error! {str(e)}")
-			raise PAR_ERROR(str(e))
+			raise repr(e)
+			# raise PAR_ERROR(str(e))
 
 	async def _arun(
 		self,
@@ -268,7 +274,8 @@ class Custom_BraveSearchResults(BaseTool):
 			)
 		except Exception as e:
 			print(f"BRAVE SEARCH API occur error! {str(e)}")
-			raise PAR_ERROR(str(e))
+			raise repr(e)
+			# raise PAR_ERROR(str(e))
 
 
 def get_brave_search_tool(max_results: Optional[int] = None) -> RunnableWithFallbacks:
@@ -283,3 +290,41 @@ def get_brave_search_tool(max_results: Optional[int] = None) -> RunnableWithFall
 	_brave_search_tool_with_fallbacks = _brave_search_tool.with_fallbacks([_brave_search_tool] * 10)
 	print('@@@@ LOAD BRAVE SEARCH TOOL SUCCESSFULLY @@@@')
 	return _brave_search_tool_with_fallbacks
+
+
+def _build_brave_results(search_results: dict) -> str:
+	web_results = ""
+	_brave_results = search_results['brave_search']['web']['results']
+	_summary_results = search_results.get('summary_search', None)
+
+	for index, _result in enumerate(_brave_results, start=1):
+		web_results += (f"<document index='{index}'>\n"
+		                f"<title>{_result['title']}</title>\n"
+		                f"<source>{_result['url']}</source>\n"
+		                f"<description>\n{_result['description']}\n</description>\n")
+
+		if _result.get('extra_snippets', None) is not None:
+			web_results += f"<extra_snippets>\n"
+			for index, snippet in enumerate(_result['extra_snippets'], start=1):
+				web_results += (f"<snippet index={index}>\n"
+				                f"{snippet}\n"
+				                f"</snippet>\n")
+			web_results += ("</extra_snippets>\n")
+
+	if _summary_results is not None:
+		web_results += f"<ai_summarize>\n{_summary_results}</ai_summarize>\n"
+
+	return web_results
+
+
+def build_search_results_item_brave(docs: dict) -> list[dict]:
+	_brave_results = docs['brave_search']['web']['results']
+	result = []
+	for index, _result in enumerate(_brave_results, start=1):
+		item = {
+			'title': _result['title'],
+			'url': _result['url'],
+			'description': _result['description'],
+		}
+		result.append(item)
+	return result
