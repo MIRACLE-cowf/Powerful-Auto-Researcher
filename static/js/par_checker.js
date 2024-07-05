@@ -6,6 +6,7 @@ function initializeSocket() {
 
     socket.on('connect', () => {
         console.log('Connected to server');
+        console.log(`task Id: ${parTaskId}`)
         if (parTaskId) {
             // 연결 시 서버에 현재 진행 중인 PAR 작업이 있음을 알림
             socket.emit('resume_par', { task_id: parTaskId });
@@ -29,8 +30,8 @@ function initializeSocket() {
 
     socket.on('par_completed', (data) => {
         updateParOverlay(data);
-        localStorage.removeItem('parTaskId');
-        parTaskId = null;
+        // localStorage.removeItem('parTaskId');
+        // parTaskId = null;
         updateParButton();
     });
 
@@ -125,7 +126,9 @@ $(document).ready(function() {
     });
 
     $('#viewResults').click(function() {
-        window.location.href = "/par_search";
+        // const query = $('.web-search-input').val().trim();
+        console.log('Redirecting with task_id:', parTaskId); // 디버깅 로그 추가
+        window.location.href = `/par_search?task_id=${parTaskId}`;
     });
 
     $('#cancelPar').click(function() {

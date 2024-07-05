@@ -137,6 +137,22 @@
             background-color: #dc3545;
             color: white;
         }
+        .play-button {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background: rgba(0, 0, 0, 0.5);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                cursor: pointer;
+            }
 </style>
 {% endblock %}
 
@@ -224,7 +240,15 @@
                 var trackId = $(this).data('track-id');
                 regenerateTranslation(trackId);
             });
+
+            $(document).on('click', '.play-button', function(e) {
+                e.stopPropagation();
+                var trackId = $(this).data('track-id');
+                window.parent.playTrack(trackId);
+            });
         });
+
+
 
         function loadLibrary() {
             $.get('/api/library', function(data) {
@@ -256,6 +280,7 @@
                     <div class="track-detail-content p-4">
                         <div class="track-image-container">
                             <img src="${data.image_url}" class="track-image" alt="${data.title}">
+                            <button class="play-button" data-track-id="${data.id}"><i class="fas fa-play"></i></button>
                         </div>
                         <h2 class="text-center">${data.title}</h2>
                         <h4 class="text-center mb-3">${data.artist}</h4>
@@ -295,6 +320,27 @@
                 $('#main-content').addClass('active');
             });
         }
+        //  function playTrack(trackId) {
+        //     console.log("Sending play request for track:", trackId);
+        //     $.ajax({
+        //         url: '/api/play-track',
+        //         type: 'POST',
+        //         contentType: 'application/json',
+        //         data: JSON.stringify({ trackId: trackId }),
+        //         success: function(response) {
+        //             if (response.success) {
+        //                 console.log('Playing track:', trackId);
+        //             } else {
+        //                 console.error('Failed to play track:', response.error);
+        //             }
+        //         },
+        //         error: function(xhr, status, error) {
+        //             console.error('Error playing track:', error);
+        //             console.error('Status:', status);
+        //             console.error('Response:', xhr.responseText);
+        //         }
+        //     });
+        // }
 
         function openLyricsModal(trackId, lyrics, isTranslated = false) {
             $('#trackId').val(trackId);

@@ -97,18 +97,17 @@
             var taskId = new URLSearchParams(window.location.search).get('task_id');
             $('#queryDisplay').text(query);
 
-            // Simulating loading of PAR results
-            setTimeout(function() {
-                var dummyMarkdown = "# " + query + "에 대한 연구 결과\n\n" +
-                                    "## 주요 발견\n\n" +
-                                    "1. 첫 번째 발견\n2. 두 번째 발견\n3. 세 번째 발견\n\n" +
-                                    "## 상세 분석\n\n" +
-                                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " +
-                                    "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." +
-                                    "\n\n## 결론\n\n" +
-                                    "이상의 연구 결과를 종합해 볼 때, 다음과 같은 결론을 내릴 수 있습니다...";
-                $('#markdownContent').html(marked.parse(dummyMarkdown));
-            }, 1000);
+            $.get('/api/par_results/' + taskId, function(data) {
+                if (data.error) {
+                    console.error('Error loading PAR results:', ddata.error)
+                    return;
+                }
+
+                var markdownContent = data.result.document
+                $('#markdownContent').html(marked.parse(markdownContent))
+            }).fail(function() {
+                console.error('Failed to load PAR results')
+            })
 
             $('#chat-send').click(function() {
                 var message = $('#chat-input').val();
@@ -137,6 +136,17 @@
                 $('#chat-messages').append(messageHtml);
                 $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
             }
+
+            function clearParTask() {
+                localStorage.removeItem('parTaskId');
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage('clearParTask', '*');
+                }
+            }
+
+            $(window).on('load', function () {
+                clearParTask()
+            })
         });
     </script>
 </body>

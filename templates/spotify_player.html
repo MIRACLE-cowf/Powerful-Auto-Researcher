@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Player</title>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    <style>
+        #spotifyPlayer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to right, #1DB954, #191414);
+            color: white;
+            padding: 10px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #spotifyPlayer .controls {
+            display: flex;
+            align-items: center;
+        }
+        #spotifyPlayer .controls button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            margin: 0 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        #spotifyPlayer .controls button:hover {
+            transform: scale(1.1);
+        }
+        #spotifyPlayer .track-info {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 14px;
+        }
+        #spotifyPlayer .volume-control {
+            display: flex;
+            align-items: center;
+        }
+        #spotifyPlayer .volume-control input {
+            width: 100px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="spotifyPlayer">
+        <div class="controls">
+            <button id="previousTrack"><i class="fas fa-step-backward"></i></button>
+            <button id="togglePlay"><i class="fas fa-play"></i></button>
+            <button id="nextTrack"><i class="fas fa-step-forward"></i></button>
+        </div>
+        <div class="track-info">
+            <span id="currentTrackName">No track playing</span> - <span id="currentArtistName"></span>
+        </div>
+        <div class="volume-control">
+            <i class="fas fa-volume-up"></i>
+            <input type="range" id="volumeControl" min="0" max="100" value="50">
+        </div>
+    </div>
+    <script>
+        let player;
+        let deviceId;
+
+        window.onSpotifyWebPlaybackSDKReady = () => {
+            const token = '{{ token }}';  // 서버에서 토큰을 주입
+            console.log('Token received:', token);
+
+            player = new Spotify.Player({
+                name: 'MIRACLE Web Player',
+                getOAuthToken: cb => { cb(token); }
+            });
+
+            // Error handling
+            player.addListener('initialization_error', ({ message }) => { console.error('Initialization error:', message); });
+            player.addListener('authentication_error', ({ message }) => { console.error('Authentication error:', message); });
+            player.addListener('account_error', ({ message }) => { console.error('Account error:', message); });
+            player.addListener('playback_error', ({ message }) => { console.error('Playback error:', message); });
+
+            player.addListener('ready', ({ device_id }) => {
+                console.log('Ready with Device ID', device_id);
+                deviceId = device_id;
+                window.parent.postMessage({ type: 'PLAYER_READY', deviceId: device_id }, '*');
+                document.getElementById('spotifyPlayer').style.display = 'flex';
+            });
+
+            player.addListener('player_state_changed', state => {
+                if (state) {
+                    console.log('Player state changed:', state);
+                    updatePlayerInfo(state);
+                    window.parent.postMessage({ type: 'PLAYER_STATE_CHANGED', state: state }, '*');
+                }
+            });
+
+            player.connect().then(success => {
+                if (success) {
+                    console.log('The Web Playback SDK successfully connected to Spotify!');
+                } else {
+                    console.error('Failed to connect to Spotify');
+                }
+            });
+
+            document.getElementById('togglePlay').onclick = () => player.togglePlay();
+            document.getElementById('previousTrack').onclick = () => player.previousTrack();
+            document.getElementById('nextTrack').onclick = () => player.nextTrack();
+            document.getElementById('volumeControl').onchange = (e) => player.setVolume(e.target.value / 100);
+        };
+
+        function updatePlayerInfo(state) {
+            if (state.track_window.current_track) {
+                document.getElementById('currentTrackName').textContent = state.track_window.current_track.name;
+                document.getElementById('currentArtistName').textContent = state.track_window.current_track.artists[0].name;
+                document.getElementById('togglePlay').innerHTML = state.paused ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+            }
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'PLAY_TRACK') {
+                console.log('Received play track request:', event.data.trackId);
+                playTrack(event.data.trackId);
+            } else if (event.data.type === 'RESTORE_PLAYER_STATE') {
+                console.log('Restoring player state:', event.data);
+                restoreTrack(event.data.trackId, event.data.position, event.data.isPlaying);
+            }
+        });
+
+        function playTrack(trackId) {
+            fetch('/api/play-track', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ trackId: trackId, deviceId: deviceId }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Playing track:', trackId);
+                } else {
+                    console.error('Failed to play track:', data.error);
+                }
+            })
+            .catch((error) => {
+                console.error('Error playing track:', error);
+            });
+        }
+
+        function restoreTrack(trackId, position, isPlaying) {
+            fetch('/api/play-track', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    trackId: trackId,
+                    deviceId: deviceId,
+                    position_ms: position
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Restored track:', trackId);
+                    if (!isPlaying) {
+                        player.pause();
+                    }
+                } else {
+                    console.error('Failed to restore track:', data.error);
+                }
+            })
+            .catch((error) => {
+                console.error('Error restoring track:', error);
+            });
+        }
+    </script>
+</body>
+</html>

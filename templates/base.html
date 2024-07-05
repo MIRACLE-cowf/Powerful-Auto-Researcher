@@ -105,6 +105,15 @@
             background-color: #f8f9fa;
             border-radius: 5px;
         }
+        #spotifyPlayerFrame {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            border: none;
+            z-index: 1000;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -114,6 +123,11 @@
             <a class="navbar-brand" href="/">MIRACLE</a>
             <div class="navbar-nav">
                 <a class="nav-link" href="/my_library">My Library</a>
+                {% if not token %}
+                    <a class="nav-link" href="/login">Login with Spotify</a>
+                {% else %}
+                    <a class="nav-link" href="/logout">Logout</a>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -164,6 +178,58 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="{{ url_for('static', filename='js/par_checker.js') }}"></script>
+
+    <!-- Spotify Player iframe -->
+    <iframe id="spotifyPlayerFrame" src="{{ url_for('spotify_player') }}" style="display:none;"></iframe>
+
+    <script>
+        const token = '{{ token }}';
+        let deviceId;
+
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'PLAYER_READY') {
+                deviceId = event.data.deviceId;
+                console.log('Player ready with device ID:', deviceId);
+                // iframe을 표시합니다.
+                document.getElementById('spotifyPlayerFrame').style.display = 'block';
+                restorePlayerState()
+            } else if (event.data.type === 'PLAYER_STATE_CHANGED') {
+                console.log('Player state changed:', event.data.state);
+                savePlayerState(event.data.state);
+                // 필요한 경우 여기서 플레이어 상태 업데이트 처리
+            }
+        });
+
+        function playTrack(trackId) {
+            console.log('Attempting to play track:', trackId);
+            document.getElementById('spotifyPlayerFrame').contentWindow.postMessage({ type: 'PLAY_TRACK', trackId: trackId }, '*');
+        }
+
+        function savePlayerState(state) {
+            console.log(state)
+            if (state && state.track_window && state.track_window.current_track) {
+                localStorage.setItem('currentTrackId', state.track_window.current_track.id);
+                localStorage.setItem('playbackPosition', state.position);
+                localStorage.setItem('isPlaying', !state.paused);
+            }
+        }
+
+        function restorePlayerState() {
+            const currentTrackId = localStorage.getItem('currentTrackId');
+            const playbackPosition = localStorage.getItem('playbackPosition');
+            const isPlaying = localStorage.getItem('isPlaying') === 'true';
+
+            if (currentTrackId) {
+                document.getElementById('spotifyPlayerFrame').contentWindow.postMessage({
+                    type: 'RESTORE_PLAYER_STATE',
+                    trackId: currentTrackId,
+                    position: parseInt(playbackPosition) || 0,
+                    isPlaying: isPlaying
+                }, '*');
+            }
+        }
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

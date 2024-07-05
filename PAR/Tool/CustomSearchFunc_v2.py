@@ -1,3 +1,4 @@
+import asyncio
 from typing import Union, Optional
 
 from langchain_community.document_loaders.arxiv import ArxivLoader
@@ -114,6 +115,7 @@ async def youtube_search_v2(
 
     try:
         results = YoutubeSearch(query, max_results=5).to_json()
+        print(results)
     except Exception as e:
         print(f"youtube search error: {str(e)}")
         return PAR_ERROR(str(e))
@@ -146,7 +148,7 @@ async def youtube_search_v2(
         chain=_content_extraction_agent,
         input={
             "search_query": query,
-            "search_results": youtube_results
+            "search_result": youtube_results
         },
         max_retries=5,
         delay_seconds=60.0,
@@ -230,3 +232,8 @@ async def asknews_search(
         _pretty_result += doc.page_content + "\n\n"
 
     return PAR_SUCCESS(_pretty_result)
+
+
+
+if __name__ == "__main__":
+    asyncio.run(youtube_search_v2(query="Introduction to bubble sort algorithm visualization beginner"))
