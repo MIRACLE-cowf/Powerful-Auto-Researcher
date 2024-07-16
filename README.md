@@ -12,6 +12,25 @@ Thank you for starred this project!
 
 Thank you for coming by, and please keep an eye out for future updates!
 
+## 🌠 OverView 🌠
+This project **PAR** is an advanced automated researcher system powered by [LangChain](https://github.com/langchain-ai/langchain), [LangGraph](https://github.com/langchain-ai/langgraph), and _**Large Language Model(LLM)**_ technologies.  
+The **PAR** goes beyond traditional RAG(Retrieval-Augmented Generation) systems, offering not only more powerful and efficient information retrieval but also document generation capabilities.  
+It aims to achieve highly accurate and efficient information retrieval and document generation by prompting the LLM to consider human perspectives, _such as why a particular question might be asked_ or _what information a human might desire_.  
+Utilizing a wide range of search engines and data sources, The PAR collects comprehensive information and then automatically generates high-quality documents based on this collected data. These documents are then embedded and stored in a vector database for optimized future retrieval.
+
+The PAR project seeks to efficiently extract and organize essential knowledge from the vast sea of information, aiming to transform the paradigm of knowledge work across various fields, including researchers, students, and business professionals.
+
+
+While the project is still in its early experimental stages and there are many steps that I ahead, it is an endeavor that I would like to share with the brilliant developers on GitHub, discussing exciting ideas and possibilities!
+
+**Before you start, you can see Test Case and Result in [Test_Case](./Test_Case) folder!**
+
+| Version    | Average Time      | Average Token                    | Document Quality |
+|------------|-------------------|----------------------------------|------------------|
+| 2024.04.02 | About 30 ~ 40 min | About 600,000 ~ 1,100,000 tokens | 1.5 ~ 2          |
+| 2024.05.30 | About 7 ~ 15 min  | About 125,000 ~ 750,000 tokens   | 2.5 ~ 4          |
++ This evaluation is extremely **subjective**.
+
 ## 😉 Help Me & Discuss Me 😉
 If you would like to see the results of the document generation, please leave a comment in the designated issue. I will be happy to provide you with the generated documents for your review.
 Or you can freely leave any comments in `Dicussions`!
@@ -20,7 +39,7 @@ Or you can freely leave any comments in `Dicussions`!
 ## 🌠 Contents 🌠
 Before getting start, strongly recommend that you read through the contents thoroughly!
 
-1. [**OverView**](MarkDown/OverView.md)
+1. [**Detailed**](MarkDown/OverView.md)
 2. [**How Does It Work?**](MarkDown/How-Does-It-Work.md)
 3. [**All Flow Chart**](MarkDown/FlowChart.md#all-flowchart)
 

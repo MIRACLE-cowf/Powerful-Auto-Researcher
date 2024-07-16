@@ -1,16 +1,3 @@
-## 🌠 OverView 🌠
-This project aims to build a more powerful RAG system powered by [LangChain](https://github.com/langchain-ai/langchain), [LangGraph](https://github.com/langchain-ai/langgraph), and [Anthropic](https://www.anthropic.com/).  
-While the project is still in its early experimental stages and there are many steps that I ahead, it is an endeavor that I would like to share with the brilliant developers on GitHub, discussing exciting ideas and possibilities!
-
-**Before you start, you can see Test Case and Result in [Test_Case](./Test_Case) folder!**
-
-| Version    | Average Time      | Average Token                    | Document Quality |
-|------------|-------------------|----------------------------------|------------------|
-| 2024.04.02 | About 30 ~ 40 min | About 600,000 ~ 1,100,000 tokens | 1.5 ~ 2          |
-| 2024.05.30 | About 7 ~ 15 min  | About 125,000 ~ 750,000 tokens   | 2.5 ~ 4          |
-+ This evaluation is extremely **subjective**.
-
-
 
 ## 🧐 What is RAG(Retrieval-Augmented Generation)? 🧐
 Retrieval-Augmented Generation(RAG) is a process that optimizes the output of large language models(LLMs) by enabling them to reference reliable knowledge bases outside of their training data sources before generating responses.  
